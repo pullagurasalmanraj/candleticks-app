@@ -1,0 +1,73 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: upstock-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount project root so backend + frontend + shared files are visible
+      - ..:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+    command: python backend/app.py
+    restart: unless-stopped
+
+  wsserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.wsserver
+    container_name: upstock-wsserver
+    ports:
+      - "9000:9000"
+    volumes:
+      - ..:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    command: python backend/wsserver.py
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: upstock-redis
+    command: redis-server --requirepass linux123
+    ports:
+      # Expose only if you really need host access
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: upstock-postgres
+    environment:
+      POSTGRES_DB: candleticks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: salman
+    ports:
+      # Optional – expose only if you need local tools
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # 🔥 THIS FIXES YOUR REDIS INSIGHT PROBLEM FOREVER
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redisdata:
+  pgdata:
