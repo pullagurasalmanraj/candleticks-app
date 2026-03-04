@@ -21,7 +21,7 @@ export default function LoginSuccess() {
         }
 
         if (code) {
-            window.location.href = `http://localhost:5000/enter-code?code=${code}`;
+            window.location.href = `/enter-code?code=${code}`;
             return;
         }
 
