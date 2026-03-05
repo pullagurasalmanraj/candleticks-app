@@ -296,7 +296,7 @@ export default function Dashboard() {
         const controller = new AbortController();
 
         fetch(
-            `http://localhost:5000/api/instruments?q=${encodeURIComponent(debouncedSearch)}`,
+            `/api/instruments?q=${encodeURIComponent(debouncedSearch)}`,
             { signal: controller.signal }
         )
             .then((r) => r.json())
@@ -320,7 +320,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         let mounted = true;
-        fetch("http://localhost:5000/api/timeframes")
+        fetch("/api/timeframes")
             .then((r) => r.json())
             .then((d) => {
                 if (!mounted) return;
@@ -346,7 +346,7 @@ export default function Dashboard() {
         try {
             if (!isActive) {
                 await fetch(
-                    `http://localhost:5000/api/ws-subscribe?symbol=${encodeURIComponent(sym)}`
+                    `/api/ws-subscribe?symbol=${encodeURIComponent(sym)}`
                 );
 
                 wsRef.current?.send(
@@ -358,7 +358,7 @@ export default function Dashboard() {
                 setSelectedInstrument(inst);
                 setToast(`Subscribed: ${sym}`);
             } else {
-                await fetch(`http://localhost:5000/api/unsubscribe`, {
+                await fetch(`/api/unsubscribe`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ instrument_key: key }),
@@ -533,8 +533,8 @@ export default function Dashboard() {
         const isDaily = finalTF === "1d";
 
         const url = isDaily
-            ? `http://localhost:5000/api/indicators/daily?symbol=${selectedSymbol}&store=true`
-            : `http://localhost:5000/api/indicators/intraday?symbol=${selectedSymbol}&timeframe=${finalTF}&store=true`;
+            ? `/api/indicators/daily?symbol=${selectedSymbol}&store=true`
+            : `/api/indicators/intraday?symbol=${selectedSymbol}&timeframe=${finalTF}&store=true`;
 
         try {
             setToast("Generating indicators...");
@@ -597,16 +597,16 @@ export default function Dashboard() {
 
             // DAILY mode → history-daily
             if (["1D", "1DAY", "DAY", "1440"].includes(timeframe)) {
-                endpoint = "http://localhost:5000/api/candles/daily";
+                endpoint = "/api/candles/daily";
             }
             // TODAY → use /api/candles/store (intraday live fetch)
             else if (isTodayRange) {
-                endpoint = "http://localhost:5000/api/candles/store";
+                endpoint = "/api/candles/store";
                 payload.timeframe = timeframe;
             }
             // PAST DATES → use /api/candles/history
             else {
-                endpoint = "http://localhost:5000/api/candles/history";
+                endpoint = "/api/candles/history";
                 payload.timeframe = timeframe;
             }
 
@@ -679,9 +679,9 @@ export default function Dashboard() {
             let endpoint = "";
 
             if (["1440", "1D", "1d", "DAY", "day"].includes(timeframe)) {
-                endpoint = "http://localhost:5000/api/candles/daily";
+                endpoint = "/api/candles/daily";
             } else {
-                endpoint = "http://localhost:5000/api/candles/history";
+                endpoint = "/api/candles/history";
                 payload.timeframe = timeframe;
             }
 
@@ -725,7 +725,7 @@ export default function Dashboard() {
         const s = normalizeDate(startDate);
         const e = normalizeDate(endDate);
 
-        const url = `http://localhost:5000/api/history/daily?instrument_key=${encodeURIComponent(
+        const url = `/api/history/daily?instrument_key=${encodeURIComponent(
             key
         )}&symbol=${encodeURIComponent(sym)}&start=${s}&end=${e}&_=${Date.now()}`;
 
