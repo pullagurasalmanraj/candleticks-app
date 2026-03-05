@@ -130,7 +130,7 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "../frontend/dist")
 
 UPSTOX_CLIENT_ID = os.getenv("UPSTOX_CLIENT_ID", "").strip()
 UPSTOX_CLIENT_SECRET = os.getenv("UPSTOX_CLIENT_SECRET", "").strip()
-UPSTOX_REDIRECT_URI = os.getenv("UPSTOX_REDIRECT_URI", "http://localhost:5000").strip()
+UPSTOX_REDIRECT_URI = os.getenv("UPSTOX_REDIRECT_URI", "http://localhost/").strip()
 UPSTOX_API_BASE = os.getenv("UPSTOX_API_BASE", "https://api.upstox.com/v2")
 TOKENS_FILE = os.path.join(BASE_DIR, "tokens.json")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
@@ -518,6 +518,7 @@ def root_or_callback():
         try:
             r = safe_requests.post(token_url, data=payload, timeout=15)
             data = r.json()
+            
             if r.status_code == 200 and "access_token" in data:
                 save_tokens(data)
                 return redirect(f"/login-success?token={data['access_token']}")
@@ -2253,7 +2254,7 @@ def offline_label_market_context():
     GAP_AUCTION_MAX_BARS = int(GAP_AUCTION_MAX_MINUTES / tf_min)
 
     # ---------- GAP AUCTION ENTRY ----------
-   gap_auction_entry = (
+    gap_auction_entry = (
         (df["session_context"] == "GAP") &
         (df["gap_resolved"] == 0) &
         (df["candle_overlap"] == 1) &
@@ -2304,10 +2305,10 @@ def offline_label_market_context():
 
     # ================= BASE REGIMES (ONLY IF UNCLASSIFIED) =================
     df.loc[
-       balance_chop &
+        balance_chop &
         (df["market_phase"] == "UNCLASSIFIED") &
-    ]   (df["gap_auction_active"] == 0)
-
+        (df["gap_auction_active"] == 0)
+    ]
 
     df.loc[
         trend_acceptance & (df["market_phase"] == "UNCLASSIFIED"),
@@ -4629,5 +4630,5 @@ if __name__ == "__main__":
 
     startup_sync_once()
 
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    
 
