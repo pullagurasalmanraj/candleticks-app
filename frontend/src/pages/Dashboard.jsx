@@ -6,6 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from "../context/ThemeContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 
+<<<<<<< HEAD
 // ----------------- Major Indexes -----------------
 const INDEX_LIST = [
     { name: "Nifty 50", symbol: "NIFTY", display: "Nifty 50" },
@@ -42,6 +43,22 @@ const startOfDay = (date) => {
 
 
 
+=======
+import { INDEX_LIST, INDEX_DEFAULTS } from "../context/indexes";
+import ChangeBadge from "../components/ChangeBadge";
+import { startOfDay } from "../utils/dateUtils";
+import { normalizeKey } from "../utils/instrumentUtils";
+import { getLtpForInstrument } from "../utils/priceUtils";
+import { formatYMD } from "../utils/dateUtils";
+import { normalizeDate } from "../utils/dateUtils";
+
+import SearchBar from "../components/SearchBar";
+import WebSocketStatus from "../components/WebSocketStatus";
+import MarketSummary from "../components/MarketSummary";
+import IndexStrip from "../components/IndexStrip";
+import SelectedInstruments from "../components/SelectedInstruments";
+import ToolsPanel from "../components/ToolsPanel";
+>>>>>>> 5fe19138 (Added new files)
 
 
 
@@ -146,12 +163,16 @@ export default function Dashboard() {
 
     // preload visible index placeholders
     useEffect(() => {
+<<<<<<< HEAD
         setIndexData({
             NIFTY: { ltp: "--", change: 0, percent: 0 },
             BANKNIFTY: { ltp: "--", change: 0, percent: 0 },
             SENSEX: { ltp: "--", change: 0, percent: 0 },
             NEXT50: { ltp: "--", change: 0, percent: 0 },
         });
+=======
+        setIndexData(INDEX_DEFAULTS);
+>>>>>>> 5fe19138 (Added new files)
     }, []);
 
     // auto hide toast
@@ -171,6 +192,7 @@ export default function Dashboard() {
         localStorage.setItem("activeSubscriptions", JSON.stringify(activeSubscriptions));
     }, [activeSubscriptions]);
 
+<<<<<<< HEAD
     const normalizeKey = (instOrKey) => {
         if (!instOrKey) return "";
         if (typeof instOrKey === "string") {
@@ -188,6 +210,9 @@ export default function Dashboard() {
                 .trim()
         );
     };
+=======
+
+>>>>>>> 5fe19138 (Added new files)
 
     const symbolMap = useMemo(() => {
         const map = {};
@@ -231,11 +256,14 @@ export default function Dashboard() {
 
 
 
+<<<<<<< HEAD
     const getLtpForInstrument = (inst) => {
         if (!inst) return "--";
         const key = inst.instrument_key?.toUpperCase().trim();
         return prices[key]?.ltp ?? "--";
     };
+=======
+>>>>>>> 5fe19138 (Added new files)
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
@@ -273,6 +301,7 @@ export default function Dashboard() {
     }, [watchlist]);
 
 
+<<<<<<< HEAD
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
@@ -280,6 +309,8 @@ export default function Dashboard() {
     }, [search]);
 
 
+=======
+>>>>>>> 5fe19138 (Added new files)
     useEffect(() => {
         // 🔒 minimum 2 chars – prevents useless DB calls
         if (debouncedSearch.length < 2) {
@@ -559,12 +590,16 @@ export default function Dashboard() {
         }
     };
 
+<<<<<<< HEAD
     const formatYMD = (d) => {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
     };
+=======
+
+>>>>>>> 5fe19138 (Added new files)
 
     const fetchHistoricalCandles = async () => {
         if (!selectedSymbol || !timeframe || !histStart || !histEnd) {
@@ -706,7 +741,11 @@ export default function Dashboard() {
         setToast(`Done fetching ${years} year(s).`);
     };
 
+<<<<<<< HEAD
     const normalizeDate = (d) => format(d, "yyyy-MM-dd");
+=======
+
+>>>>>>> 5fe19138 (Added new files)
 
     const downloadExcel = async () => {
         if (!selectedSymbol || !startDate || !endDate) {
@@ -776,11 +815,18 @@ export default function Dashboard() {
             className={
                 isLight
                     ? "min-h-[calc(100vh-4rem)] bg-neutral-100 text-slate-900"
+<<<<<<< HEAD
 
                     : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
 
             }
         >
+=======
+                    : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
+            }
+        >
+
+>>>>>>> 5fe19138 (Added new files)
             {/* Toast */}
             {toast && (
                 <div className="fixed bottom-5 right-5 z-50 rounded-md bg-slate-900 text-slate-50 text-xs px-4 py-2 shadow-lg border border-slate-700">
@@ -789,6 +835,7 @@ export default function Dashboard() {
             )}
 
             <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+<<<<<<< HEAD
                 {/* Top row: search + status */}
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     {/* Search */}
@@ -1466,3 +1513,103 @@ export default function Dashboard() {
         </div >
     );
 }
+=======
+
+                {/* Top row: search + status */}
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                    <SearchBar
+                        search={search}
+                        setSearch={setSearch}
+                        setDebouncedSearch={setDebouncedSearch}
+                        showResults={showResults}
+                        setShowResults={setShowResults}
+                        debouncedSearch={debouncedSearch}
+                        instruments={instruments}
+                        watchlist={watchlist}
+                        toggleWatchlist={toggleWatchlist}
+                        setSelectedSymbol={setSelectedSymbol}
+                        setSelectedInstrument={setSelectedInstrument}
+                        setSelectedInstruments={setSelectedInstruments}
+                        getLtpForInstrument={getLtpForInstrument}
+                        prices={prices}
+                        isLight={isLight}
+                    />
+
+                    {/* Status */}
+                    <div className="flex items-end lg:items-center gap-4 justify-between lg:justify-end">
+
+                        <WebSocketStatus
+                            isConnected={isConnected}
+                            connectWebSocket={connectWebSocket}
+                            disconnectWebSocket={disconnectWebSocket}
+                        />
+
+                        <MarketSummary
+                            marketSummary={marketSummary}
+                            asOf={asOf}
+                        />
+
+                    </div>
+
+                </div>
+
+
+                {/* Index strip */}
+                <IndexStrip
+                    prices={prices}
+                    indexData={indexData}
+                    isLight={isLight}
+                />
+
+
+                {/* Main layout */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                    {/* LEFT */}
+                    <SelectedInstruments
+                        selectedInstruments={selectedInstruments}
+                        prices={prices}
+                        selectedSymbol={selectedSymbol}
+                        activeSubscriptions={activeSubscriptions}
+                        isLight={isLight}
+                        normalizeKey={normalizeKey}
+                        setSelectedSymbol={setSelectedSymbol}
+                        setSelectedInstrument={setSelectedInstrument}
+                        setSelectedInstruments={setSelectedInstruments}
+                        subscribeToStock={subscribeToStock}
+                    />
+
+                    {/* RIGHT */}
+                    <ToolsPanel
+                        isLight={isLight}
+                        selectedSymbol={selectedSymbol}
+                        setSelectedSymbol={setSelectedSymbol}
+                        startDate={startDate}
+                        endDate={endDate}
+                        setStartDate={setStartDate}
+                        setEndDate={setEndDate}
+                        histStart={histStart}
+                        histEnd={histEnd}
+                        setHistStart={setHistStart}
+                        setHistEnd={setHistEnd}
+                        timeframe={timeframe}
+                        setTimeframe={setTimeframe}
+                        timeframes={timeframes}
+                        years={years}
+                        setYears={setYears}
+                        isApplyingIndicators={isApplyingIndicators}
+                        runBulkFetch={runBulkFetch}
+                        applyIndicators={applyIndicators}
+                        fetchHistoricalCandles={fetchHistoricalCandles}
+                        downloadExcel={downloadExcel}
+                    />
+
+                </div>
+
+            </div>
+
+        </div>
+    );
+}
+>>>>>>> 5fe19138 (Added new files)
