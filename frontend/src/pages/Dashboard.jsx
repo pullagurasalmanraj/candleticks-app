@@ -6,45 +6,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from "../context/ThemeContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-// ----------------- Major Indexes -----------------
-const INDEX_LIST = [
-    { name: "Nifty 50", symbol: "NIFTY", display: "Nifty 50" },
-    { name: "Sensex", symbol: "SENSEX", display: "Sensex" },
-    { name: "Bank Nifty", symbol: "BANKNIFTY", display: "Bank Nifty" },
-    { name: "Nifty Next 50", symbol: "NEXT50", display: "Nifty Next 50" },
-];
-
-function ChangeBadge({ pct, up }) {
-    const sign = up ? "+" : "";
-    return (
-        <span
-            className={
-                "text-[11px] font-semibold px-2 py-0.5 rounded-full " +
-                (up
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    : "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300")
-            }
-        >
-            {sign}
-            {pct.toFixed(2)}%
-        </span>
-    );
-}
-
-
-const startOfDay = (date) => {
-    if (!date) return null;
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d;
-};
-
-
-
-
-=======
 import { INDEX_LIST, INDEX_DEFAULTS } from "../context/indexes";
 import ChangeBadge from "../components/ChangeBadge";
 import { startOfDay } from "../utils/dateUtils";
@@ -53,26 +14,12 @@ import { getLtpForInstrument } from "../utils/priceUtils";
 import { formatYMD } from "../utils/dateUtils";
 import { normalizeDate } from "../utils/dateUtils";
 
-=======
-import { INDEX_LIST, INDEX_DEFAULTS } from "../context/indexes";
-import ChangeBadge from "../components/ChangeBadge";
-import { startOfDay } from "../utils/dateUtils";
-import { normalizeKey } from "../utils/instrumentUtils";
-import { getLtpForInstrument } from "../utils/priceUtils";
-import { formatYMD } from "../utils/dateUtils";
-import { normalizeDate } from "../utils/dateUtils";
-
->>>>>>> develop
 import SearchBar from "../components/SearchBar";
 import WebSocketStatus from "../components/WebSocketStatus";
 import MarketSummary from "../components/MarketSummary";
 import IndexStrip from "../components/IndexStrip";
 import SelectedInstruments from "../components/SelectedInstruments";
 import ToolsPanel from "../components/ToolsPanel";
-<<<<<<< HEAD
->>>>>>> 5fe19138 (Added new files)
-=======
->>>>>>> develop
 
 
 
@@ -177,20 +124,7 @@ export default function Dashboard() {
 
     // preload visible index placeholders
     useEffect(() => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-        setIndexData({
-            NIFTY: { ltp: "--", change: 0, percent: 0 },
-            BANKNIFTY: { ltp: "--", change: 0, percent: 0 },
-            SENSEX: { ltp: "--", change: 0, percent: 0 },
-            NEXT50: { ltp: "--", change: 0, percent: 0 },
-        });
-=======
         setIndexData(INDEX_DEFAULTS);
->>>>>>> 5fe19138 (Added new files)
-=======
-        setIndexData(INDEX_DEFAULTS);
->>>>>>> develop
     }, []);
 
     // auto hide toast
@@ -210,31 +144,7 @@ export default function Dashboard() {
         localStorage.setItem("activeSubscriptions", JSON.stringify(activeSubscriptions));
     }, [activeSubscriptions]);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const normalizeKey = (instOrKey) => {
-        if (!instOrKey) return "";
-        if (typeof instOrKey === "string") {
-            return instOrKey.toUpperCase().trim();
-        }
-        return (
-            (
-                instOrKey.instrument_key ||
-                instOrKey.instrumentKey ||
-                instOrKey.symbol ||
-                ""
-            )
-                .toString()
-                .toUpperCase()
-                .trim()
-        );
-    };
-=======
 
->>>>>>> 5fe19138 (Added new files)
-=======
-
->>>>>>> develop
 
     const symbolMap = useMemo(() => {
         const map = {};
@@ -278,17 +188,6 @@ export default function Dashboard() {
 
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const getLtpForInstrument = (inst) => {
-        if (!inst) return "--";
-        const key = inst.instrument_key?.toUpperCase().trim();
-        return prices[key]?.ltp ?? "--";
-    };
-=======
->>>>>>> 5fe19138 (Added new files)
-=======
->>>>>>> develop
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
@@ -326,19 +225,6 @@ export default function Dashboard() {
     }, [watchlist]);
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
-        return () => clearTimeout(t);
-    }, [search]);
-
-
-=======
->>>>>>> 5fe19138 (Added new files)
-=======
->>>>>>> develop
     useEffect(() => {
         // 🔒 minimum 2 chars – prevents useless DB calls
         if (debouncedSearch.length < 2) {
@@ -618,20 +504,7 @@ export default function Dashboard() {
         }
     };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const formatYMD = (d) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    };
-=======
 
->>>>>>> 5fe19138 (Added new files)
-=======
-
->>>>>>> develop
 
     const fetchHistoricalCandles = async () => {
         if (!selectedSymbol || !timeframe || !histStart || !histEnd) {
@@ -773,15 +646,7 @@ export default function Dashboard() {
         setToast(`Done fetching ${years} year(s).`);
     };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const normalizeDate = (d) => format(d, "yyyy-MM-dd");
-=======
 
->>>>>>> 5fe19138 (Added new files)
-=======
-
->>>>>>> develop
 
     const downloadExcel = async () => {
         if (!selectedSymbol || !startDate || !endDate) {
@@ -851,24 +716,10 @@ export default function Dashboard() {
             className={
                 isLight
                     ? "min-h-[calc(100vh-4rem)] bg-neutral-100 text-slate-900"
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
-                    : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
-            }
-        >
-<<<<<<< HEAD
-=======
                     : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
             }
         >
 
->>>>>>> 5fe19138 (Added new files)
-=======
-
->>>>>>> develop
             {/* Toast */}
             {toast && (
                 <div className="fixed bottom-5 right-5 z-50 rounded-md bg-slate-900 text-slate-50 text-xs px-4 py-2 shadow-lg border border-slate-700">
@@ -877,110 +728,6 @@ export default function Dashboard() {
             )}
 
             <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
-                {/* Top row: search + status */}
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                    <SearchBar
-                        search={search}
-                        setSearch={setSearch}
-                        setDebouncedSearch={setDebouncedSearch}
-                        showResults={showResults}
-                        setShowResults={setShowResults}
-                        debouncedSearch={debouncedSearch}
-                        instruments={instruments}
-                        watchlist={watchlist}
-                        toggleWatchlist={toggleWatchlist}
-                        setSelectedSymbol={setSelectedSymbol}
-                        setSelectedInstrument={setSelectedInstrument}
-                        setSelectedInstruments={setSelectedInstruments}
-                        getLtpForInstrument={getLtpForInstrument}
-                        prices={prices}
-                        isLight={isLight}
-                    />
-
-                    {/* Status */}
-                    <div className="flex items-end lg:items-center gap-4 justify-between lg:justify-end">
-
-                        <WebSocketStatus
-                            isConnected={isConnected}
-                            connectWebSocket={connectWebSocket}
-                            disconnectWebSocket={disconnectWebSocket}
-                        />
-
-                        <MarketSummary
-                            marketSummary={marketSummary}
-                            asOf={asOf}
-                        />
-
-                    </div>
-
-                </div>
-
-
-                {/* Index strip */}
-                <IndexStrip
-                    prices={prices}
-                    indexData={indexData}
-                    isLight={isLight}
-                />
-
-
-                {/* Main layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-                    {/* LEFT */}
-                    <SelectedInstruments
-                        selectedInstruments={selectedInstruments}
-                        prices={prices}
-                        selectedSymbol={selectedSymbol}
-                        activeSubscriptions={activeSubscriptions}
-                        isLight={isLight}
-                        normalizeKey={normalizeKey}
-                        setSelectedSymbol={setSelectedSymbol}
-                        setSelectedInstrument={setSelectedInstrument}
-                        setSelectedInstruments={setSelectedInstruments}
-                        subscribeToStock={subscribeToStock}
-                    />
-
-                    {/* RIGHT */}
-                    <ToolsPanel
-                        isLight={isLight}
-                        selectedSymbol={selectedSymbol}
-                        setSelectedSymbol={setSelectedSymbol}
-                        startDate={startDate}
-                        endDate={endDate}
-                        setStartDate={setStartDate}
-                        setEndDate={setEndDate}
-                        histStart={histStart}
-                        histEnd={histEnd}
-                        setHistStart={setHistStart}
-                        setHistEnd={setHistEnd}
-                        timeframe={timeframe}
-                        setTimeframe={setTimeframe}
-                        timeframes={timeframes}
-                        years={years}
-                        setYears={setYears}
-                        isApplyingIndicators={isApplyingIndicators}
-                        runBulkFetch={runBulkFetch}
-                        applyIndicators={applyIndicators}
-                        fetchHistoricalCandles={fetchHistoricalCandles}
-                        downloadExcel={downloadExcel}
-                    />
-
-                </div>
-
-            </div>
-
-        </div>
-    );
-<<<<<<< HEAD
-}
-=======
 
                 {/* Top row: search + status */}
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1079,7 +826,3 @@ export default function Dashboard() {
         </div>
     );
 }
->>>>>>> 5fe19138 (Added new files)
-=======
-}
->>>>>>> develop
