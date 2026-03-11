@@ -7,6 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // ----------------- Major Indexes -----------------
 const INDEX_LIST = [
     { name: "Nifty 50", symbol: "NIFTY", display: "Nifty 50" },
@@ -52,13 +53,26 @@ import { getLtpForInstrument } from "../utils/priceUtils";
 import { formatYMD } from "../utils/dateUtils";
 import { normalizeDate } from "../utils/dateUtils";
 
+=======
+import { INDEX_LIST, INDEX_DEFAULTS } from "../context/indexes";
+import ChangeBadge from "../components/ChangeBadge";
+import { startOfDay } from "../utils/dateUtils";
+import { normalizeKey } from "../utils/instrumentUtils";
+import { getLtpForInstrument } from "../utils/priceUtils";
+import { formatYMD } from "../utils/dateUtils";
+import { normalizeDate } from "../utils/dateUtils";
+
+>>>>>>> develop
 import SearchBar from "../components/SearchBar";
 import WebSocketStatus from "../components/WebSocketStatus";
 import MarketSummary from "../components/MarketSummary";
 import IndexStrip from "../components/IndexStrip";
 import SelectedInstruments from "../components/SelectedInstruments";
 import ToolsPanel from "../components/ToolsPanel";
+<<<<<<< HEAD
 >>>>>>> 5fe19138 (Added new files)
+=======
+>>>>>>> develop
 
 
 
@@ -164,6 +178,7 @@ export default function Dashboard() {
     // preload visible index placeholders
     useEffect(() => {
 <<<<<<< HEAD
+<<<<<<< HEAD
         setIndexData({
             NIFTY: { ltp: "--", change: 0, percent: 0 },
             BANKNIFTY: { ltp: "--", change: 0, percent: 0 },
@@ -173,6 +188,9 @@ export default function Dashboard() {
 =======
         setIndexData(INDEX_DEFAULTS);
 >>>>>>> 5fe19138 (Added new files)
+=======
+        setIndexData(INDEX_DEFAULTS);
+>>>>>>> develop
     }, []);
 
     // auto hide toast
@@ -192,6 +210,7 @@ export default function Dashboard() {
         localStorage.setItem("activeSubscriptions", JSON.stringify(activeSubscriptions));
     }, [activeSubscriptions]);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const normalizeKey = (instOrKey) => {
         if (!instOrKey) return "";
@@ -213,6 +232,9 @@ export default function Dashboard() {
 =======
 
 >>>>>>> 5fe19138 (Added new files)
+=======
+
+>>>>>>> develop
 
     const symbolMap = useMemo(() => {
         const map = {};
@@ -257,6 +279,7 @@ export default function Dashboard() {
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     const getLtpForInstrument = (inst) => {
         if (!inst) return "--";
         const key = inst.instrument_key?.toUpperCase().trim();
@@ -264,6 +287,8 @@ export default function Dashboard() {
     };
 =======
 >>>>>>> 5fe19138 (Added new files)
+=======
+>>>>>>> develop
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
@@ -302,6 +327,7 @@ export default function Dashboard() {
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
@@ -311,6 +337,8 @@ export default function Dashboard() {
 
 =======
 >>>>>>> 5fe19138 (Added new files)
+=======
+>>>>>>> develop
     useEffect(() => {
         // 🔒 minimum 2 chars – prevents useless DB calls
         if (debouncedSearch.length < 2) {
@@ -591,6 +619,7 @@ export default function Dashboard() {
     };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     const formatYMD = (d) => {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -600,6 +629,9 @@ export default function Dashboard() {
 =======
 
 >>>>>>> 5fe19138 (Added new files)
+=======
+
+>>>>>>> develop
 
     const fetchHistoricalCandles = async () => {
         if (!selectedSymbol || !timeframe || !histStart || !histEnd) {
@@ -742,10 +774,14 @@ export default function Dashboard() {
     };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     const normalizeDate = (d) => format(d, "yyyy-MM-dd");
 =======
 
 >>>>>>> 5fe19138 (Added new files)
+=======
+
+>>>>>>> develop
 
     const downloadExcel = async () => {
         if (!selectedSymbol || !startDate || !endDate) {
@@ -816,17 +852,23 @@ export default function Dashboard() {
                 isLight
                     ? "min-h-[calc(100vh-4rem)] bg-neutral-100 text-slate-900"
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> develop
                     : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
-
             }
         >
+<<<<<<< HEAD
 =======
                     : "min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-50"
             }
         >
 
 >>>>>>> 5fe19138 (Added new files)
+=======
+
+>>>>>>> develop
             {/* Toast */}
             {toast && (
                 <div className="fixed bottom-5 right-5 z-50 rounded-md bg-slate-900 text-slate-50 text-xs px-4 py-2 shadow-lg border border-slate-700">
@@ -836,682 +878,107 @@ export default function Dashboard() {
 
             <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
                 {/* Top row: search + status */}
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    {/* Search */}
-                    <div className="w-full lg:max-w-xl relative">
 
-                        <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-1">
-                            Search instruments
-                        </p>
-                        <div className="space-y-2">
-                            <div className="relative">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                                    🔍
-                                </span>
-                                <input
-                                    value={search}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setSearch(val);
-                                        setShowResults(val.trim().length > 0);
-                                        if (!val.trim()) setDebouncedSearch("");
-                                    }}
-                                    placeholder="Search by symbol or name (e.g. TCS, INFY, RELIANCE)…"
-                                    className={[
-                                        "w-full rounded-full border px-9 py-2.5 text-sm outline-none shadow-sm",
-                                        isLight
-                                            ? "bg-neutral-50 border-neutral-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-
-                                            : "bg-slate-900 border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-900",
-                                    ].join(" ")}
-                                />
-                            </div>
-
-                            {showResults && debouncedSearch && (
-                                <ul
-                                    className={[
-                                        "absolute top-full left-0 mt-1 w-full max-h-72 overflow-y-auto rounded-xl border text-xs shadow-lg z-50",
-                                        isLight
-                                            ? "bg-neutral-50 border-neutral-300 divide-y divide-neutral-200"
-
-                                            : "bg-slate-900 border-slate-700 divide-slate-800",
-                                    ].join(" ")}
-                                >
-                                    {instruments.length === 0 ? (
-                                        <li className="px-3 py-3 text-slate-500 italic">
-                                            No instruments found.
-                                        </li>
-                                    ) : (
-                                        instruments.slice(0, 80).map((inst) => {
-                                            const sym = (inst.symbol || "").toUpperCase().trim();
-                                            const ltp = getLtpForInstrument(inst);
-                                            const inWatch = watchlist.some((w) => w.symbol === sym);
-                                            const isOption =
-                                                inst.segment === "NSE_FO" &&
-                                                ["CE", "PE"].includes(inst.instrument_type);
-
-                                            return (
-                                                <li
-                                                    key={`${sym}-${inst.instrument_key}`}
-                                                    className={[
-                                                        "px-3 py-2 flex items-center justify-between cursor-pointer",
-                                                        isLight ? "hover:bg-neutral-100" : "hover:bg-slate-800/70",
-
-                                                    ].join(" ")}
-                                                    onClick={() => {
-                                                        const exchange =
-                                                            inst.exchange?.toUpperCase() || "";
-                                                        setSelectedSymbol(sym);
-                                                        const enrichedInst = {
-                                                            ...inst,
-                                                            symbol: sym,
-                                                            exchange,
-                                                        };
-                                                        setSelectedInstrument(enrichedInst);
-
-                                                        setSelectedInstruments((prev) => {
-                                                            const exists = prev.some(
-                                                                (p) =>
-                                                                    p.symbol === sym &&
-                                                                    p.exchange === exchange
-                                                            );
-                                                            if (exists) return prev;
-                                                            return [...prev, enrichedInst];
-                                                        });
-
-                                                        setShowResults(false);
-                                                    }}
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="text-[12px] font-semibold truncate">
-                                                            {sym}
-                                                            {isOption && (
-                                                                <span className="ml-2 text-[10px] text-indigo-500">
-                                                                    {inst.instrument_type} | Lot {inst.lot_size}
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="text-[11px] text-slate-500 truncate">
-                                                            {inst.name}
-                                                        </div>
-                                                        {isOption && (
-                                                            <div className="text-[10px] text-slate-400">
-                                                                Exp: {new Date(inst.expiry).toLocaleDateString("en-IN", {
-                                                                    day: "2-digit",
-                                                                    month: "short",
-                                                                    year: "2-digit",
-                                                                })}
-                                                            </div>
-                                                        )}
-
-                                                        <div className="text-[10px] text-slate-400">
-                                                            {inst.segment}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-[11px] font-semibold">
-                                                            ₹{" "}
-                                                            {typeof ltp === "number"
-                                                                ? ltp.toLocaleString("en-IN")
-                                                                : "--"}
-                                                        </span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                toggleWatchlist(inst);
-                                                            }}
-                                                            className={[
-                                                                "text-[11px] px-2 py-0.5 rounded-full border",
-                                                                inWatch
-                                                                    ? "bg-amber-400 text-black border-amber-400"
-                                                                    : isLight
-                                                                        ? "border-slate-300 text-slate-500"
-                                                                        : "border-slate-600 text-slate-300",
-                                                            ].join(" ")}
-                                                        >
-                                                            {inWatch ? "★" : "☆"}
-                                                        </button>
-                                                    </div>
-                                                </li>
-                                            );
-                                        })
-                                    )}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
+                    <SearchBar
+                        search={search}
+                        setSearch={setSearch}
+                        setDebouncedSearch={setDebouncedSearch}
+                        showResults={showResults}
+                        setShowResults={setShowResults}
+                        debouncedSearch={debouncedSearch}
+                        instruments={instruments}
+                        watchlist={watchlist}
+                        toggleWatchlist={toggleWatchlist}
+                        setSelectedSymbol={setSelectedSymbol}
+                        setSelectedInstrument={setSelectedInstrument}
+                        setSelectedInstruments={setSelectedInstruments}
+                        getLtpForInstrument={getLtpForInstrument}
+                        prices={prices}
+                        isLight={isLight}
+                    />
 
                     {/* Status */}
                     <div className="flex items-end lg:items-center gap-4 justify-between lg:justify-end">
-                        <button
-                            onClick={isConnected ? disconnectWebSocket : connectWebSocket}
-                            className={[
-                                "inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg transition-all border",
-                                isConnected
-                                    ? "border-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-700"
-                                    : "border-slate-400 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700",
-                            ].join(" ")}
-                        >
-                            <span
-                                className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-300 animate-pulse" : "bg-red-400"
-                                    }`}
-                            />
-                            {isConnected ? "Disconnect WebSocket" : "Connect WebSocket"}
-                        </button>
 
-                        <div className="text-right text-[11px] text-slate-400">
-                            <div className="font-medium">
-                                {marketSummary?.title ?? "Market summary"}
-                            </div>
-                            <div>
-                                {asOf ? `Updated ${new Date(asOf).toLocaleTimeString()}` : ""}
-                            </div>
-                        </div>
+                        <WebSocketStatus
+                            isConnected={isConnected}
+                            connectWebSocket={connectWebSocket}
+                            disconnectWebSocket={disconnectWebSocket}
+                        />
+
+                        <MarketSummary
+                            marketSummary={marketSummary}
+                            asOf={asOf}
+                        />
+
                     </div>
+
                 </div>
 
+
                 {/* Index strip */}
-                <section
-                    className={[
-                        "rounded-2xl border px-4 py-3 flex items-center gap-3 overflow-x-auto",
-                        isLight
-                            ? "bg-white border-slate-200"
-                            : "bg-slate-900 border-slate-800",
-                    ].join(" ")}
-                >
-                    {INDEX_LIST.map((idx) => {
-                        const sym = idx.symbol.toUpperCase().replace(/ /g, "");
-                        const live = prices[sym] || null;
-                        const d = indexData[sym] || null;
-                        const source = live || d;
+                <IndexStrip
+                    prices={prices}
+                    indexData={indexData}
+                    isLight={isLight}
+                />
 
-                        const ltp = source?.ltp ?? "--";
-                        const change = source?.change ?? 0;
-                        const pct = source?.percent ?? 0;
-                        const up = change >= 0;
 
-                        return (
-                            <div
-                                key={idx.name}
-                                className={[
-                                    "min-w-[160px] rounded-xl px-3 py-2 flex items-center justify-between text-xs border",
-                                    isLight
-                                        ? "bg-slate-50 border-slate-200"
-                                        : "bg-slate-900 border-slate-700",
-                                ].join(" ")}
-                            >
-                                <div>
-                                    <div className="text-[12px] font-semibold">
-                                        {idx.display}
-                                    </div>
-                                    <div className="text-[10px] text-slate-400">
-                                        {idx.name}
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-[13px] font-semibold">
-                                        {typeof ltp === "number"
-                                            ? ltp.toLocaleString("en-IN", {
-                                                minimumFractionDigits: 2,
-                                            })
-                                            : ltp}
-                                    </div>
-                                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                                        <span
-                                            className={[
-                                                "text-[10px] font-semibold",
-                                                up ? "text-emerald-500" : "text-red-400",
-                                            ].join(" ")}
-                                        >
-                                            {up ? "▲" : "▼"} {change.toFixed(2)}
-                                        </span>
-                                        <ChangeBadge pct={pct || 0} up={up} />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </section>
-                {/* Main two-column layout */}
+                {/* Main layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-                    {/* LEFT: Selected instruments */}
-                    <section
-                        className={[
-                            "xl:col-span-2 rounded-2xl border shadow-sm p-5",
-                            isLight
-                                ? "bg-white border-slate-200"
-                                : "bg-slate-900 border-slate-800",
-                        ].join(" ")}
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 className="text-sm font-semibold">Selected instruments</h2>
-                                <p className="text-[11px] text-slate-400">
-                                    Click from search to add. Subscriptions are per instrument key.
-                                </p>
-                            </div>
-                            <button
-                                className="text-[11px] px-3 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                onClick={() => {
-                                    setSelectedInstruments([]);
-                                    setSelectedInstrument(null);
-                                    setSelectedSymbol("");
-                                }}
-                            >
-                                Clear all
-                            </button>
-                        </div>
+                    {/* LEFT */}
+                    <SelectedInstruments
+                        selectedInstruments={selectedInstruments}
+                        prices={prices}
+                        selectedSymbol={selectedSymbol}
+                        activeSubscriptions={activeSubscriptions}
+                        isLight={isLight}
+                        normalizeKey={normalizeKey}
+                        setSelectedSymbol={setSelectedSymbol}
+                        setSelectedInstrument={setSelectedInstrument}
+                        setSelectedInstruments={setSelectedInstruments}
+                        subscribeToStock={subscribeToStock}
+                    />
 
-                        {selectedInstruments.length === 0 ? (
-                            <p className="text-xs text-slate-500">
-                                Use the search above to add instruments to your working list.
-                            </p>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {selectedInstruments.map((item) => {
-                                    const sym = (item.symbol || "").toUpperCase().trim();
-                                    const key = normalizeKey(item);
+                    {/* RIGHT */}
+                    <ToolsPanel
+                        isLight={isLight}
+                        selectedSymbol={selectedSymbol}
+                        setSelectedSymbol={setSelectedSymbol}
+                        startDate={startDate}
+                        endDate={endDate}
+                        setStartDate={setStartDate}
+                        setEndDate={setEndDate}
+                        histStart={histStart}
+                        histEnd={histEnd}
+                        setHistStart={setHistStart}
+                        setHistEnd={setHistEnd}
+                        timeframe={timeframe}
+                        setTimeframe={setTimeframe}
+                        timeframes={timeframes}
+                        years={years}
+                        setYears={setYears}
+                        isApplyingIndicators={isApplyingIndicators}
+                        runBulkFetch={runBulkFetch}
+                        applyIndicators={applyIndicators}
+                        fetchHistoricalCandles={fetchHistoricalCandles}
+                        downloadExcel={downloadExcel}
+                    />
 
-                                    const live = prices[key] || {};
-
-                                    const ltp = live.ltp;
-                                    const change = live.change;
-                                    const pct = live.percent;
-
-                                    const hasPrice = typeof ltp === "number";
-                                    const isUp = hasPrice && change >= 0;
-
-                                    const arrow = !hasPrice ? "•" : isUp ? "▲" : "▼";
-                                    const priceColor = !hasPrice
-                                        ? "text-slate-400"
-                                        : isUp
-                                            ? "text-emerald-500"
-                                            : "text-red-500";
-
-                                    const displayLtp = hasPrice
-                                        ? ltp.toLocaleString("en-IN")
-                                        : "--";
-
-                                    const displayChange = hasPrice
-                                        ? change.toFixed(2)
-                                        : "0.00";
-
-                                    const displayPct = hasPrice
-                                        ? pct.toFixed(2)
-                                        : "0.00";
-
-                                    const isSelected = selectedSymbol === sym;
-                                    const isRunning = !!activeSubscriptions[key];
-
-                                    return (
-                                        <div
-                                            key={`${sym}-${item.exchange || item.segment || ""}`}
-                                            className={[
-                                                "flex flex-col justify-between rounded-xl border px-4 py-3 shadow-sm hover:shadow-md cursor-pointer transition-all",
-
-                                                isSelected
-                                                    ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/40"
-                                                    : isLight
-                                                        ? "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
-                                                        : "border-slate-700 hover:border-blue-500/60 hover:bg-slate-900",
-                                            ].join(" ")}
-                                            onClick={() => {
-                                                setSelectedSymbol(sym);
-                                                setSelectedInstrument(item);
-                                            }}
-                                        >
-                                            {/* Header */}
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <div className="text-sm font-semibold truncate">
-                                                        {sym}
-                                                    </div>
-                                                    <div className="text-[11px] text-slate-400 truncate">
-                                                        {item.name}
-                                                    </div>
-                                                    {item.exchange && (
-                                                        <div className="text-[10px] text-slate-400">
-                                                            {item.exchange}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="text-right">
-                                                    <div className={`text-xs font-bold ${priceColor}`}>
-                                                        {arrow} ₹ {displayLtp}
-
-                                                        {/* show stale indicator if price is cached / no recent tick */}
-                                                        {live?.ts && Date.now() - live.ts > 2000 && (
-                                                            <span className="ml-1 text-[10px] text-slate-400">
-                                                                (last)
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className={`text-[11px] font-semibold ${priceColor}`}>
-                                                        {isUp ? "+" : ""}
-                                                        {displayChange} ({displayPct}%)
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div className="mt-3 flex items-center justify-between gap-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        subscribeToStock(item);
-                                                    }}
-                                                    className={[
-                                                        "h-8 px-3 text-[11px] rounded-md font-medium border",
-                                                        isRunning
-                                                            ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
-                                                            : "bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700",
-                                                    ].join(" ")}
-                                                >
-                                                    {isRunning ? "Stop stream" : "Start stream"}
-                                                </button>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedInstruments((prev) =>
-                                                            prev.filter(
-                                                                (p) =>
-                                                                    !(
-                                                                        p.symbol === sym &&
-                                                                        (p.exchange || p.segment) ===
-                                                                        (item.exchange || item.segment)
-                                                                    )
-                                                            )
-                                                        );
-                                                    }}
-                                                    className={[
-                                                        "h-8 px-3 text-[11px] rounded-md border",
-                                                        isLight
-                                                            ? "border-slate-300 hover:bg-slate-100"
-                                                            : "border-slate-700 hover:bg-slate-800",
-                                                    ].join(" ")}
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </section>
-
-                    {/* Right: Tools & data actions */}
-                    <section className="xl:col-span-1 space-y-4">
-                        <div className="w-full max-w-sm space-y-4">
-
-                            {/* ================= DOWNLOAD DAILY ================= */}
-                            <div
-                                className={[
-                                    "rounded-xl border p-4 shadow-sm",
-                                    isLight
-                                        ? "bg-white border-slate-200"
-                                        : "bg-slate-900 border-slate-800",
-                                ].join(" ")}
-                            >
-                                <h3 className="text-sm font-semibold mb-3">
-                                    Download historical (daily)
-                                </h3>
-
-                                <div className="space-y-2">
-                                    {/* Symbol */}
-                                    <input
-                                        value={selectedSymbol}
-                                        onChange={(e) =>
-                                            setSelectedSymbol(e.target.value.toUpperCase())
-                                        }
-                                        placeholder="Symbol (e.g. TCS)"
-                                        className={[
-                                            "w-full h-9 rounded-md border px-3 text-sm outline-none box-border",
-                                            isLight
-                                                ? "bg-white border-slate-300 focus:border-blue-500"
-                                                : "bg-slate-800 border-slate-700 focus:border-blue-500",
-                                        ].join(" ")}
-                                    />
-
-                                    {/* Date range */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="w-full">
-                                            <DatePicker
-                                                fixedHeight
-                                                selected={startDate}
-                                                onChange={(d) => setStartDate(startOfDay(d))}
-                                                maxDate={startOfDay(new Date())}
-                                                showMonthDropdown
-                                                showYearDropdown
-                                                dropdownMode="select"
-                                                dateFormat="dd/MM/yyyy"
-                                                placeholderText="Start date"
-                                                popperPlacement="bottom-start"
-                                                portalId="datepicker-portal"
-                                                className={[
-                                                    "w-full h-9 rounded-md border px-2 text-center text-sm outline-none box-border tabular-nums",
-                                                    isLight
-                                                        ? "bg-white border-slate-300"
-                                                        : "bg-slate-800 border-slate-700",
-                                                ].join(" ")}
-                                            />
-
-                                        </div>
-
-                                        <div className="w-full">
-                                            <DatePicker
-                                                fixedHeight
-                                                selected={endDate}
-                                                onChange={(d) => setEndDate(startOfDay(d))}
-                                                minDate={startDate ? startOfDay(startDate) : null}
-                                                maxDate={startOfDay(new Date())}
-                                                showMonthDropdown
-                                                showYearDropdown
-                                                dropdownMode="select"
-                                                dateFormat="dd/MM/yyyy"
-                                                placeholderText="End date"
-                                                popperPlacement="bottom-start"
-                                                portalId="datepicker-portal"
-                                                className={[
-                                                    "w-full h-9 rounded-md border px-2 text-center text-sm outline-none box-border tabular-nums",
-                                                    isLight
-                                                        ? "bg-white border-slate-300"
-                                                        : "bg-slate-800 border-slate-700",
-                                                ].join(" ")}
-                                            />
-
-                                        </div>
-                                    </div>
-
-
-                                    {/* Download button */}
-                                    <div className="flex justify-end pt-1">
-                                        <button
-                                            type="button"
-                                            onClick={downloadExcel}
-                                            className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                                        >
-                                            Download Excel
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ================= INTRADAY & INDICATORS ================= */}
-                            <div
-                                className={[
-                                    "rounded-xl border p-4 shadow-sm",
-                                    isLight
-                                        ? "bg-white border-slate-200"
-                                        : "bg-slate-900 border-slate-800",
-                                ].join(" ")}
-                            >
-                                <h3 className="text-sm font-semibold mb-3">
-                                    Intraday history & indicators
-                                </h3>
-
-                                <div className="space-y-3">
-                                    {/* Timeframe */}
-                                    <div>
-                                        <label className="block mb-1 text-[11px] font-medium text-slate-500">
-                                            Timeframe
-                                        </label>
-                                        <select
-                                            value={timeframe}
-                                            onChange={(e) => setTimeframe(e.target.value)}
-                                            className={[
-                                                "w-full h-9 rounded-md border px-2 text-sm outline-none box-border",
-                                                isLight
-                                                    ? "bg-white border-slate-300"
-                                                    : "bg-slate-800 border-slate-700",
-                                            ].join(" ")}
-                                        >
-                                            <option value="">Select timeframe</option>
-                                            {timeframes.map((tf) => (
-                                                <option key={tf.value} value={tf.value}>
-                                                    {tf.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Bulk years */}
-                                    <div>
-                                        <label className="block mb-1 text-[11px] font-medium text-slate-500">
-                                            Bulk fetch range (years)
-                                        </label>
-                                        <select
-                                            value={years}
-                                            onChange={(e) => setYears(e.target.value)}
-                                            className={[
-                                                "w-full h-9 rounded-md border px-2 text-sm outline-none box-border",
-                                                isLight
-                                                    ? "bg-white border-slate-300"
-                                                    : "bg-slate-800 border-slate-700",
-                                            ].join(" ")}
-                                        >
-                                            <option value="">Select</option>
-                                            <option value="1">1 Year</option>
-                                            <option value="2">2 Years</option>
-                                            <option value="3">3 Years</option>
-                                            <option value="5">5 Years</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Manual date range */}
-                                    <div>
-                                        <label className="block mb-1 text-[11px] font-medium text-slate-500">
-                                            Manual date range
-                                        </label>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="w-full">
-                                                <DatePicker
-                                                    fixedHeight
-                                                    selected={histStart}
-                                                    onChange={(d) => setHistStart(startOfDay(d))}
-                                                    maxDate={startOfDay(new Date())}
-                                                    showMonthDropdown
-                                                    showYearDropdown
-                                                    dropdownMode="select"
-                                                    dateFormat="dd/MM/yyyy"
-                                                    placeholderText="Start date"
-                                                    popperPlacement="bottom-start"
-                                                    portalId="datepicker-portal"
-                                                    className={[
-                                                        "w-full h-9 rounded-md border px-2 text-center text-sm outline-none box-border tabular-nums",
-                                                        isLight
-                                                            ? "bg-white border-slate-300"
-                                                            : "bg-slate-800 border-slate-700",
-                                                    ].join(" ")}
-                                                />
-                                            </div>
-
-                                            <div className="w-full">
-                                                <DatePicker
-                                                    fixedHeight
-                                                    selected={histEnd}
-                                                    onChange={(d) => setHistEnd(startOfDay(d))}
-                                                    minDate={histStart ? startOfDay(histStart) : null}
-                                                    maxDate={startOfDay(new Date())}
-                                                    showMonthDropdown
-                                                    showYearDropdown
-                                                    dropdownMode="select"
-                                                    dateFormat="dd/MM/yyyy"
-                                                    placeholderText="End date"
-                                                    popperPlacement="bottom-start"
-                                                    portalId="datepicker-portal"
-                                                    className={[
-                                                        "w-full h-9 rounded-md border px-2 text-center text-sm outline-none box-border tabular-nums",
-                                                        isLight
-                                                            ? "bg-white border-slate-300"
-                                                            : "bg-slate-800 border-slate-700",
-                                                    ].join(" ")}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-
-                                    {/* Action buttons */}
-                                    <div className="space-y-2 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={runBulkFetch}
-                                            disabled={!selectedSymbol || !timeframe || !years}
-                                            className={[
-                                                "w-full rounded-md px-3 py-2 text-xs font-semibold",
-                                                !selectedSymbol || !timeframe || !years
-                                                    ? "bg-slate-300 cursor-not-allowed"
-                                                    : "bg-blue-600 text-white hover:bg-blue-700",
-                                            ].join(" ")}
-                                        >
-                                            Fetch full history {years && `(${years}Y)`}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={applyIndicators}
-                                            disabled={!selectedSymbol || !timeframe || isApplyingIndicators}
-                                            className={[
-                                                "w-full rounded-md px-3 py-2 text-xs font-semibold",
-                                                !selectedSymbol || !timeframe || isApplyingIndicators
-                                                    ? "bg-slate-300 cursor-not-allowed"
-                                                    : "bg-emerald-600 text-white hover:bg-emerald-700",
-                                            ].join(" ")}
-                                        >
-                                            {isApplyingIndicators ? "Processing…" : "Generate indicators"}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={fetchHistoricalCandles}
-                                            disabled={!selectedSymbol || !timeframe || !histStart || !histEnd}
-                                            className={[
-                                                "w-full rounded-md px-3 py-2 text-xs font-semibold",
-                                                !selectedSymbol || !timeframe || !histStart || !histEnd
-                                                    ? "bg-slate-300 cursor-not-allowed"
-                                                    : "bg-purple-600 text-white hover:bg-purple-700",
-                                            ].join(" ")}
-                                        >
-                                            Fetch historical (store to DB)
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </section>
                 </div>
 
             </div>
-        </div >
+
+        </div>
     );
+<<<<<<< HEAD
 }
 =======
 
@@ -1613,3 +1080,6 @@ export default function Dashboard() {
     );
 }
 >>>>>>> 5fe19138 (Added new files)
+=======
+}
+>>>>>>> develop
