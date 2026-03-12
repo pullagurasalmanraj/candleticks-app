@@ -2,11 +2,28 @@ import { useEffect, useRef, useState } from "react";
 
 export default function useWebSocketPrices(instrumentByKey) {
 
-    const wsRef = useRef(null);
 
     const [prices, setPrices] = useState({});
     const [lastPrices, setLastPrices] = useState({});
     const [isConnected, setIsConnected] = useState(false);
+    const [isLoading, setIsLoading] = useState(true)
+
+    const wsRef = useRef(null);
+
+    useEffect(() => {
+
+        // restore cached prices
+        const cached = localStorage.getItem("lastPrices");
+
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                setPrices(parsed);
+                setLastPrices(parsed);
+            } catch { }
+        }
+
+    }, []);
 
     useEffect(() => {
 
@@ -19,7 +36,6 @@ export default function useWebSocketPrices(instrumentByKey) {
         const connect = () => {
 
             const ws = new WebSocket("ws://localhost:9000");
-
             wsRef.current = ws;
 
             ws.onopen = () => {
@@ -27,18 +43,15 @@ export default function useWebSocketPrices(instrumentByKey) {
                 console.log("🟢 WS connected");
 
                 setIsConnected(true);
+                setIsLoading(false);   // ✅ IMPORTANT
 
                 const keys = Object.keys(savedSubs);
 
                 if (keys.length > 0) {
-
-                    ws.send(
-                        JSON.stringify({
-                            subscribe: keys,
-                            source: "restore"
-                        })
-                    );
-
+                    ws.send(JSON.stringify({
+                        subscribe: keys,
+                        source: "restore"
+                    }));
                 }
 
             };
@@ -48,7 +61,6 @@ export default function useWebSocketPrices(instrumentByKey) {
                 try {
 
                     const msg = JSON.parse(evt.data);
-
                     const feeds = msg?.data?.feeds;
 
                     if (!feeds) return;
@@ -58,7 +70,6 @@ export default function useWebSocketPrices(instrumentByKey) {
                     for (const [rawKey, feed] of Object.entries(feeds)) {
 
                         const ltpc = feed?.fullFeed?.marketFF?.ltpc;
-
                         if (!ltpc) continue;
 
                         const ltp = Number(ltpc.ltp);
@@ -69,15 +80,13 @@ export default function useWebSocketPrices(instrumentByKey) {
                         const change = +(ltp - prevClose).toFixed(2);
                         const percent = +((change / prevClose) * 100).toFixed(2);
 
-                        const direction = change >= 0 ? "up" : "down";
-
                         const key = rawKey.trim().toUpperCase();
 
                         updatedPrices[key] = {
                             ltp,
                             change,
                             percent,
-                            direction,
+                            direction: change >= 0 ? "up" : "down",
                             ts: Date.now()
                         };
 
@@ -98,17 +107,11 @@ export default function useWebSocketPrices(instrumentByKey) {
 
                         });
 
-                        setLastPrices(prev => ({
-                            ...prev,
-                            ...updatedPrices
-                        }));
-
+                        setLastPrices(prev => ({ ...prev, ...updatedPrices }));
                     }
 
                 } catch (err) {
-
                     console.error("Tick parse error:", err);
-
                 }
 
             };
@@ -116,23 +119,16 @@ export default function useWebSocketPrices(instrumentByKey) {
             ws.onclose = () => {
 
                 console.warn("🔴 WS closed");
-
                 setIsConnected(false);
 
                 if (!closed) {
-
                     setTimeout(connect, 2000);
-
                 }
 
             };
 
             ws.onerror = () => {
-
-                console.error("⚠ WS error");
-
-                ws.close();
-
+                console.warn("WS temporary error");
             };
 
         };
@@ -140,34 +136,17 @@ export default function useWebSocketPrices(instrumentByKey) {
         connect();
 
         return () => {
-
             closed = true;
-
             wsRef.current?.close();
-
         };
 
     }, [instrumentByKey]);
-
-
-
-    const sendMessage = (msg) => {
-
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-
-            wsRef.current.send(JSON.stringify(msg));
-
-        }
-
-    };
-
 
     return {
         prices,
         lastPrices,
         isConnected,
-        wsRef,
-        sendMessage
+        isLoading,
+        wsRef
     };
-
 }

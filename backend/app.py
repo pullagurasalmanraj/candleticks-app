@@ -13,8 +13,9 @@ import gzip
 import pandas as pd
 import numpy as np
 import traceback
+
 # ---- TIME IMPORTS (FINAL) ----
-import time as systime               # ONLY for sleep()
+import time as systime  # ONLY for sleep()
 from datetime import datetime, timedelta, timezone, time as dtime
 from zoneinfo import ZoneInfo
 import threading
@@ -60,6 +61,7 @@ import ta
 
 
 import warnings
+
 warnings.filterwarnings("ignore")
 from io import BytesIO
 import pandas as pd
@@ -74,15 +76,16 @@ from io import BytesIO
 from psycopg2.extras import execute_batch
 from flask import request, jsonify, send_file
 
-import ta                      # technical indicators (pip install ta)
+import ta  # technical indicators (pip install ta)
 
 try:
-    import talib               # candlestick & classic TA indicators
+    import talib  # candlestick & classic TA indicators
 except ImportError:
-    talib = None               # safe fallback if TA-Lib missing
+    talib = None  # safe fallback if TA-Lib missing
 
 
 from dotenv import load_dotenv, set_key
+
 load_dotenv(override=True)
 from datetime import datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone, time as dtime
@@ -158,6 +161,7 @@ if redis_lib is not None:
 else:
     print("⚠️ redis library not available; Redis features disabled")
 
+
 # Helpers: tokens
 def load_saved_tokens():
     if REDIS_ENABLED and redis_client is not None:
@@ -173,6 +177,7 @@ def load_saved_tokens():
         except Exception:
             pass
     return {}
+
 
 def save_tokens(data: dict):
     data_copy = dict(data)
@@ -195,6 +200,7 @@ def save_tokens(data: dict):
             pass
     print("💾 Token saved.")
 
+
 def token_is_fresh(max_age_hours=24):
     data = load_saved_tokens()
     access_token = data.get("access_token")
@@ -205,13 +211,18 @@ def token_is_fresh(max_age_hours=24):
         saved_time = datetime.fromisoformat(saved_at)
         if saved_time.tzinfo is None:
             saved_time = saved_time.replace(tzinfo=timezone.utc)
-        return (datetime.now(timezone.utc) - saved_time) < timedelta(hours=max_age_hours)
+        return (datetime.now(timezone.utc) - saved_time) < timedelta(
+            hours=max_age_hours
+        )
     except Exception:
         return False
 
+
 def refresh_upstox_token():
     data = load_saved_tokens()
-    refresh_token = data.get("refresh_token") or os.getenv("UPSTOX_REFRESH_TOKEN", "").strip()
+    refresh_token = (
+        data.get("refresh_token") or os.getenv("UPSTOX_REFRESH_TOKEN", "").strip()
+    )
     if not refresh_token:
         print("🔴 No refresh_token available.")
         return False
@@ -237,9 +248,11 @@ def refresh_upstox_token():
         print("❌ Exception while refreshing token:", e)
         return False
 
+
 # Index summary (cache in redis)
 _last_market_data = None
 _last_market_time = 0
+
 
 def is_market_open():
     now = datetime.now(INDIA_TZ).time()
@@ -251,7 +264,7 @@ def is_market_open():
 # =======================
 PG_HOST = os.getenv("PGHOST", "127.0.0.1")
 PG_PORT = int(os.getenv("PGPORT", "5432"))
-PG_DB   = os.getenv("PGDATABASE", "trading_db")
+PG_DB = os.getenv("PGDATABASE", "trading_db")
 PG_USER = os.getenv("PGUSER", "postgres")
 PG_PASSWORD = os.getenv("PGPASSWORD", "postgres")
 
@@ -269,8 +282,8 @@ def get_db_conn():
         user=PG_USER,
         password=PG_PASSWORD,
     )
-    
-    
+
+
 def get_db():
     return psycopg2.connect(
         host=os.getenv("PGHOST"),
@@ -280,7 +293,6 @@ def get_db():
         password=os.getenv("PGPASSWORD"),
         cursor_factory=RealDictCursor,
     )
-    
 
 
 def init_db():
@@ -336,27 +348,31 @@ def init_db():
             cur.execute("SELECT COUNT(*) FROM timeframes;")
             tf_count = cur.fetchone()[0]
             if tf_count == 0:
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO timeframes (value, label) VALUES
                     ('1',  '1 Minute'),
                     ('3',  '3 Minute'),
                     ('5',  '5 Minute'),
                     ('15', '15 Minute'),
                     ('30', '30 Minute');
-                """)
+                """
+                )
 
             # Seed date ranges if empty
             cur.execute("SELECT COUNT(*) FROM date_ranges;")
             dr_count = cur.fetchone()[0]
             if dr_count == 0:
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO date_ranges (code, label, days_back_start, days_back_end) VALUES
                     ('1D',  'Today',           0, 0),
                     ('2D',  'Last 2 Days',     2, 0),
                     ('5D',  'Last 5 Days',     5, 0),
                     ('10D', 'Last 10 Days',   10, 0),
                     ('20D', 'Last 20 Days',   20, 0);
-                """)
+                """
+                )
 
     print("✅ PostgreSQL tables ensured (timeframes, intraday_candles, date_ranges).")
 
@@ -364,6 +380,7 @@ def init_db():
 @app.route("/api/index-summary", methods=["GET"])
 def index_summary():
     from datetime import datetime
+
     global _last_market_data, _last_market_time
 
     ttl = 15 if is_market_open() else 300  # Faster refresh during market hours
@@ -394,25 +411,26 @@ def index_summary():
         "Nifty 50": "NSE_INDEX|NIFTY_50",
         "Bank Nifty": "NSE_INDEX|BANKNIFTY",
         "Sensex": "BSE_INDEX|SENSEX",
-        "Nifty Next 50": "NSE_INDEX|NIFTY_NEXT_50"
+        "Nifty Next 50": "NSE_INDEX|NIFTY_NEXT_50",
     }
 
     url = "https://api.upstox.com/v2/market-quote/indices"
     symbols = ",".join(INDEX_KEYS.values())
 
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Accept": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
 
-    response = safe_requests.get(f"{url}?symbols={symbols}", headers=headers, timeout=10)
+    response = safe_requests.get(
+        f"{url}?symbols={symbols}", headers=headers, timeout=10
+    )
 
     # ---- Token Expired → Refresh ----
     if response.status_code == 401:
         if refresh_upstox_token():
             tokens = load_saved_tokens()
             headers["Authorization"] = f"Bearer {tokens.get('access_token')}"
-            response = safe_requests.get(f"{url}?symbols={symbols}", headers=headers, timeout=10)
+            response = safe_requests.get(
+                f"{url}?symbols={symbols}", headers=headers, timeout=10
+            )
         else:
             return jsonify({"error": "Session expired — login again"}), 401
 
@@ -429,8 +447,12 @@ def index_summary():
     # ---- Build Clean Response ----
     for name, key in INDEX_KEYS.items():
         row = next(
-            (x for x in data if x.get("instrument_key") == key or x.get("tradingsymbol") in key),
-            None
+            (
+                x
+                for x in data
+                if x.get("instrument_key") == key or x.get("tradingsymbol") in key
+            ),
+            None,
         )
 
         if not row:
@@ -463,7 +485,7 @@ def index_summary():
             "change": change,
             "percent": percent,
             "direction": "up" if change >= 0 else "down",
-            "source": "Upstox Live"
+            "source": "Upstox Live",
         }
 
         total_percent += percent
@@ -477,9 +499,9 @@ def index_summary():
         "indices": summary,
         "marketSummary": {
             "title": f"{icon} Market {'UP' if avg_percent >= 0 else 'DOWN'}",
-            "avg_percent": avg_percent
+            "avg_percent": avg_percent,
         },
-        "asOf": as_of
+        "asOf": as_of,
     }
 
     # ---- Save Cache ----
@@ -492,16 +514,69 @@ def index_summary():
     return jsonify(payload)
 
 
+from flask import request, session, jsonify
+from werkzeug.security import check_password_hash
+
+
+@app.route("/api/login", methods=["POST"])
+def login_user():
+
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT password_hash FROM users WHERE username=%s", (username,))
+
+    row = cur.fetchone()
+
+    if not row:
+        return jsonify({"error": "Invalid username"}), 401
+
+    if not check_password_hash(row[0], password):
+        return jsonify({"error": "Invalid password"}), 401
+
+    session["user"] = username
+
+    return jsonify({"success": True})
+
+
+@app.route("/api/signup", methods=["POST"])
+def signup():
+
+    data = request.json
+    username = data["username"]
+    password = generate_password_hash(data["password"])
+
+    cur.execute(
+        "INSERT INTO users(username,password_hash) VALUES(%s,%s)", (username, password)
+    )
+
+    conn.commit()
+
+    return {"success": True}
+
+
 # OAuth endpoints (minimal)
+from flask import session, redirect, jsonify
+
+
 @app.route("/auth/login")
 def auth_login():
+
+    if "user" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
     auth_url = (
         f"{UPSTOX_API_BASE}/login/authorization/dialog"
         f"?client_id={UPSTOX_CLIENT_ID}"
         f"&redirect_uri={UPSTOX_REDIRECT_URI}"
         f"&response_type=code"
     )
+
     return redirect(auth_url)
+
 
 @app.route("/", methods=["GET"])
 def root_or_callback():
@@ -518,7 +593,7 @@ def root_or_callback():
         try:
             r = safe_requests.post(token_url, data=payload, timeout=15)
             data = r.json()
-            
+
             if r.status_code == 200 and "access_token" in data:
                 save_tokens(data)
                 return redirect(f"/login-success?token={data['access_token']}")
@@ -530,11 +605,13 @@ def root_or_callback():
         return send_from_directory(FRONTEND_DIR, "index.html")
     return redirect("/auth/login")
 
+
 @app.route("/login-success")
 def login_success():
     response = send_from_directory(FRONTEND_DIR, "index.html")
     response.headers["Cache-Control"] = "no-store"
     return response
+
 
 # Subscribe API: publishes a subscribe request to Redis.
 @app.route("/api/ws-subscribe", methods=["GET"])
@@ -580,27 +657,26 @@ def api_ws_subscribe():
         # ---- Send subscription request to Redis ----
         redis_client.publish(
             "subscribe:requests",
-            json.dumps({
-                "instrument_key": instrument_key,
-                "action": "subscribe",
-                "symbol": symbol
-            })
+            json.dumps(
+                {
+                    "instrument_key": instrument_key,
+                    "action": "subscribe",
+                    "symbol": symbol,
+                }
+            ),
         )
 
         print(f"📡 SUBSCRIBE → {symbol} → {instrument_key}")
 
-        return jsonify({
-            "status": "subscribed",
-            "instrument_key": instrument_key,
-            "symbol": symbol
-        })
+        return jsonify(
+            {"status": "subscribed", "instrument_key": instrument_key, "symbol": symbol}
+        )
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
-    
 @app.route("/api/unsubscribe", methods=["POST"])
 def api_unsubscribe():
     data = request.json
@@ -612,21 +688,12 @@ def api_unsubscribe():
     # 🔥 Send proper unsubscribe format
     redis_client.publish(
         "unsubscribe:requests",
-        json.dumps({
-            "instrument_key": ik,
-            "method": "unsub",
-            "action": "unsubscribe"
-        })
+        json.dumps({"instrument_key": ik, "method": "unsub", "action": "unsubscribe"}),
     )
 
     print(f"❌ Unsubscribe → {ik}")
 
-    return jsonify({
-        "status": "unsubscribed",
-        "instrument_key": ik
-    })
-    
-
+    return jsonify({"status": "unsubscribed", "instrument_key": ik})
 
 
 @app.errorhandler(404)
@@ -649,6 +716,7 @@ def _normalize_date(date_str):
         return datetime.fromisoformat(date_str).date().strftime("%Y-%m-%d")
     except Exception:
         raise ValueError(f"Invalid date format: {date_str}")
+
 
 @app.route("/api/history/daily", methods=["GET"])
 def download_daily_upstox():
@@ -704,7 +772,7 @@ def download_daily_upstox():
 
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
 
         response = safe_requests.get(url, headers=headers, timeout=20)
@@ -728,7 +796,9 @@ def download_daily_upstox():
         if not candles:
             return jsonify({"error": "No candle data returned"}), 404
 
-        df = pd.DataFrame(candles, columns=["Date", "Open", "High", "Low", "Close", "Volume", "OI"])
+        df = pd.DataFrame(
+            candles, columns=["Date", "Open", "High", "Low", "Close", "Volume", "OI"]
+        )
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.sort_values("Date")
 
@@ -750,7 +820,11 @@ def download_daily_upstox():
         df["SMA_20"] = ta.trend.SMAIndicator(close, 20).sma_indicator()
 
         macd = ta.trend.MACD(close)
-        df["MACD"], df["MACD_Signal"], df["MACD_Hist"] = macd.macd(), macd.macd_signal(), macd.macd_diff()
+        df["MACD"], df["MACD_Signal"], df["MACD_Hist"] = (
+            macd.macd(),
+            macd.macd_signal(),
+            macd.macd_diff(),
+        )
 
         df["ADX_14"] = ta.trend.ADXIndicator(high, low, close, 14).adx()
 
@@ -779,7 +853,7 @@ def download_daily_upstox():
                 output,
                 as_attachment=True,
                 download_name=filename,
-                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         )
 
@@ -794,14 +868,12 @@ def download_daily_upstox():
         return jsonify({"error": str(e)}), 500
 
 
-
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
-
 
 
 # -------------------------------------------------
@@ -837,7 +909,9 @@ def classify(segment, instrument_type):
 
     return "OTHER", False
 
+
 from datetime import datetime, timezone
+
 
 def ms_to_date(ms):
     """
@@ -851,7 +925,6 @@ def ms_to_date(ms):
         return None
 
 
-    
 def sync_instruments_core():
     print("🔄 [SYNC] Core instrument sync started")
 
@@ -881,34 +954,35 @@ def sync_instruments_core():
             skipped += 1
             continue
 
-        asset_class, is_tradeable = classify(
-            i.get("segment"),
-            i.get("instrument_type")
-        )
+        asset_class, is_tradeable = classify(i.get("segment"), i.get("instrument_type"))
 
-        rows.append((
-            ik,
-            (i.get("trading_symbol") or "").upper(),
-            i.get("name"),
-            "NSE" if (i.get("segment") or "").startswith("NSE")
-            else "BSE" if (i.get("segment") or "").startswith("BSE")
-            else "MCX",
-            i.get("segment"),
-            i.get("instrument_type"),
-            i.get("isin"),
-            i.get("underlying_symbol"),
-            i.get("strike_price"),
-            ms_to_date(i.get("expiry")),
-            i.get("lot_size"),
-            i.get("minimum_lot"),
-            i.get("qty_multiplier"),
-            i.get("exchange_token"),
-            i.get("tick_size"),
-            asset_class,
-            is_tradeable,
-            snapshot_ts,   # last_seen_at
-            True           # is_active
-        ))
+        rows.append(
+            (
+                ik,
+                (i.get("trading_symbol") or "").upper(),
+                i.get("name"),
+                (
+                    "NSE"
+                    if (i.get("segment") or "").startswith("NSE")
+                    else "BSE" if (i.get("segment") or "").startswith("BSE") else "MCX"
+                ),
+                i.get("segment"),
+                i.get("instrument_type"),
+                i.get("isin"),
+                i.get("underlying_symbol"),
+                i.get("strike_price"),
+                ms_to_date(i.get("expiry")),
+                i.get("lot_size"),
+                i.get("minimum_lot"),
+                i.get("qty_multiplier"),
+                i.get("exchange_token"),
+                i.get("tick_size"),
+                asset_class,
+                is_tradeable,
+                snapshot_ts,  # last_seen_at
+                True,  # is_active
+            )
+        )
 
     print(f"🧱 [SYNC] Prepared {len(rows)} rows (skipped {skipped})")
 
@@ -958,7 +1032,7 @@ def sync_instruments_core():
                     is_active       = TRUE
                 """,
                 rows,
-                page_size=1000
+                page_size=1000,
             )
 
         conn.commit()
@@ -968,7 +1042,6 @@ def sync_instruments_core():
         f"rows={len(rows)}, skipped={skipped}, "
         f"snapshot_ts={snapshot_ts.isoformat()}"
     )
-
 
 
 @app.route("/api/admin/sync-instruments", methods=["POST"])
@@ -981,9 +1054,9 @@ def sync_instruments():
         return jsonify({"error": str(e)}), 500
 
 
-
 # Simple instruments endpoint placeholder
 import psycopg2.extras
+
 
 @app.route("/api/instruments", methods=["GET"])
 def api_instruments():
@@ -1030,12 +1103,7 @@ def api_instruments():
         LIMIT 50
     """
 
-    params = [
-        f"{q}%",
-        f"{q}%",
-        q,
-        f"{q}%"
-    ]
+    params = [f"{q}%", f"{q}%", q, f"{q}%"]
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1045,8 +1113,6 @@ def api_instruments():
     conn.close()
 
     return jsonify({"instruments": rows})
-
-
 
 
 @app.route("/api/timeframes", methods=["GET"])
@@ -1069,7 +1135,8 @@ def api_timeframes():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e), "timeframes": []}), 500
-    
+
+
 @app.route("/api/date-ranges", methods=["GET"])
 def api_date_ranges():
     """
@@ -1106,9 +1173,8 @@ def api_date_ranges():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e), "ranges": []}), 500
-    
 
-    
+
 @app.route("/api/candles/store", methods=["POST"])
 def api_candles_store():
     """
@@ -1119,15 +1185,15 @@ def api_candles_store():
         payload = request.get_json(force=True) or {}
 
         instrument_key = (payload.get("instrument_key") or "").strip()
-        timeframe      = (payload.get("timeframe") or "").strip()
-        start_date     = payload.get("start_date")
-        end_date       = payload.get("end_date")
+        timeframe = (payload.get("timeframe") or "").strip()
+        start_date = payload.get("start_date")
+        end_date = payload.get("end_date")
 
         if not instrument_key or not timeframe:
             return jsonify({"error": "instrument_key and timeframe required"}), 400
 
         # -------------------------
-        # Extract Symbol (Same Logic) 
+        # Extract Symbol (Same Logic)
         # -------------------------
         symbol = (payload.get("symbol") or "").strip().upper()
 
@@ -1152,12 +1218,17 @@ def api_candles_store():
         # Access Token
         # -------------------------
         tokens = load_saved_tokens()
-        access_token = tokens.get("access_token") or os.getenv("UPSTOX_ACCESS_TOKEN", "").strip()
+        access_token = (
+            tokens.get("access_token") or os.getenv("UPSTOX_ACCESS_TOKEN", "").strip()
+        )
         if not access_token:
-            return jsonify({"error": "No Upstox access token. Please login again."}), 401
+            return (
+                jsonify({"error": "No Upstox access token. Please login again."}),
+                401,
+            )
 
         # -------------------------
-        # API URL 
+        # API URL
         # -------------------------
         url = f"{UPSTOX_V3_BASE}/historical-candle/intraday/{instrument_key}/minutes/{timeframe}"
         headers = {
@@ -1170,7 +1241,10 @@ def api_candles_store():
         r = safe_requests.get(url, headers=headers, timeout=20)
 
         if r.status_code != 200:
-            return jsonify({"error": "Upstox API error", "details": r.json()}), r.status_code
+            return (
+                jsonify({"error": "Upstox API error", "details": r.json()}),
+                r.status_code,
+            )
 
         candles = (r.json() or {}).get("data", {}).get("candles", [])
         if not candles:
@@ -1180,7 +1254,7 @@ def api_candles_store():
         # Date Filter
         # -------------------------
         start_dt = datetime.fromisoformat(start_date).date() if start_date else None
-        end_dt   = datetime.fromisoformat(end_date).date() if end_date else None
+        end_dt = datetime.fromisoformat(end_date).date() if end_date else None
 
         rows = []
         for c in candles:
@@ -1191,7 +1265,7 @@ def api_candles_store():
             except:
                 continue
 
-            if start_dt and ts.date() < start_dt: 
+            if start_dt and ts.date() < start_dt:
                 continue
 
             if end_dt and ts.date() > end_dt:
@@ -1222,14 +1296,16 @@ def api_candles_store():
                 """
                 execute_batch(cur, sql, rows, page_size=500)
 
-        return jsonify({
-            "status": "success",
-            "symbol": symbol,
-            "exchange": exchange,
-            "timeframe": timeframe,
-            "inserted": len(rows),
-            "total": len(candles)
-        })
+        return jsonify(
+            {
+                "status": "success",
+                "symbol": symbol,
+                "exchange": exchange,
+                "timeframe": timeframe,
+                "inserted": len(rows),
+                "total": len(candles),
+            }
+        )
 
     except Exception as e:
         traceback.print_exc()
@@ -1242,22 +1318,26 @@ import traceback
 import os
 
 
-
 @app.route("/api/candles/history", methods=["POST"])
 def api_candles_history():
     try:
         payload = request.get_json(force=True) or {}
 
         instrument_key = (payload.get("instrument_key") or "").strip()
-        symbol         = (payload.get("symbol") or "").strip().upper()
-        timeframe      = (payload.get("timeframe") or "").strip()
-        start_date     = (payload.get("start_date") or "").strip()
-        end_date       = (payload.get("end_date") or "").strip()
+        symbol = (payload.get("symbol") or "").strip().upper()
+        timeframe = (payload.get("timeframe") or "").strip()
+        start_date = (payload.get("start_date") or "").strip()
+        end_date = (payload.get("end_date") or "").strip()
 
         if not all([instrument_key, symbol, timeframe, start_date, end_date]):
-            return jsonify({
-                "error": "symbol, instrument_key, timeframe, start_date and end_date required"
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": "symbol, instrument_key, timeframe, start_date and end_date required"
+                    }
+                ),
+                400,
+            )
 
         # ---------------- Exchange ----------------
         exchange = "UNKNOWN"
@@ -1266,27 +1346,35 @@ def api_candles_history():
 
         # ---------------- Timeframe map ----------------
         TF_MAP = {
-            "1m": "1", "1": "1",
-            "3m": "3", "3": "3",
-            "5m": "5", "5": "5",
-            "15m": "15", "15": "15",
-            "30m": "30", "30": "30",
-            "60m": "60", "60": "60",
+            "1m": "1",
+            "1": "1",
+            "3m": "3",
+            "3": "3",
+            "5m": "5",
+            "5": "5",
+            "15m": "15",
+            "15": "15",
+            "30m": "30",
+            "30": "30",
+            "60m": "60",
+            "60": "60",
         }
         api_tf = TF_MAP.get(timeframe.lower(), timeframe)
 
         # ---------------- Token ----------------
         tokens = load_saved_tokens()
-        access_token = tokens.get("access_token") or os.getenv("UPSTOX_ACCESS_TOKEN", "").strip()
+        access_token = (
+            tokens.get("access_token") or os.getenv("UPSTOX_ACCESS_TOKEN", "").strip()
+        )
         if not access_token:
             return jsonify({"error": "No Upstox access token"}), 401
 
         # ---------------- Normalize dates ----------------
-        from_date = min(start_date, end_date)   # earlier
-        to_date   = max(start_date, end_date)   # later
+        from_date = min(start_date, end_date)  # earlier
+        to_date = max(start_date, end_date)  # later
 
         start_dt = date.fromisoformat(from_date)
-        end_dt   = date.fromisoformat(to_date)
+        end_dt = date.fromisoformat(to_date)
 
         print("[DEBUG] candles/history payload:", request.get_json())
 
@@ -1310,16 +1398,22 @@ def api_candles_history():
             interval = 1
 
         else:
-            return jsonify({
-                "error": "Unsupported timeframe",
-                "received": timeframe,
-                "expected": ["1m", "3m", "5m", "15m", "30m", "1h", "1d"]
-            }), 400
-
+            return (
+                jsonify(
+                    {
+                        "error": "Unsupported timeframe",
+                        "received": timeframe,
+                        "expected": ["1m", "3m", "5m", "15m", "30m", "1h", "1d"],
+                    }
+                ),
+                400,
+            )
 
         # ---------------- Chunk size (Upstox rules) ----------------
         if category == "minutes":
-            delta = relativedelta(months=1) if interval <= 15 else relativedelta(months=3)
+            delta = (
+                relativedelta(months=1) if interval <= 15 else relativedelta(months=3)
+            )
         elif category == "hours":
             delta = relativedelta(months=3)
         elif category == "days":
@@ -1359,12 +1453,17 @@ def api_candles_history():
 
             r = safe_requests.get(url, headers=headers, timeout=30)
             if r.status_code != 200:
-                return jsonify({
-                    "error": "Upstox API error",
-                    "details": r.json(),
-                    "from": str(chunk_from),
-                    "to": str(chunk_to)
-                }), r.status_code
+                return (
+                    jsonify(
+                        {
+                            "error": "Upstox API error",
+                            "details": r.json(),
+                            "from": str(chunk_from),
+                            "to": str(chunk_to),
+                        }
+                    ),
+                    r.status_code,
+                )
 
             candles = (r.json() or {}).get("data", {}).get("candles", [])
             total_received += len(candles)
@@ -1399,33 +1498,34 @@ def api_candles_history():
                             volume=EXCLUDED.volume
                         """,
                         rows,
-                        page_size=500
+                        page_size=500,
                     )
 
             total_inserted += len(rows)
 
         # ---------------- Final response ----------------
-        return jsonify({
-            "status": "success",
-            "symbol": symbol,
-            "exchange": exchange,
-            "timeframe": timeframe,
-            "stored_tf": api_tf,
-            "chunks": len(chunks),
-            "inserted": total_inserted,
-            "total": total_received,
-            "from_date": from_date,
-            "to_date": to_date,
-        })
+        return jsonify(
+            {
+                "status": "success",
+                "symbol": symbol,
+                "exchange": exchange,
+                "timeframe": timeframe,
+                "stored_tf": api_tf,
+                "chunks": len(chunks),
+                "inserted": total_inserted,
+                "total": total_received,
+                "from_date": from_date,
+                "to_date": to_date,
+            }
+        )
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
-    
-    
 from urllib.parse import quote
+
 
 def detect_exchange(instrument_key: str) -> str:
     """Extract NSE/BSE cleanly from instrument key."""
@@ -1446,13 +1546,20 @@ def api_daily_candles():
     try:
         payload = request.json or {}
 
-        symbol         = payload.get("symbol", "").upper().strip()
+        symbol = payload.get("symbol", "").upper().strip()
         instrument_key = payload.get("instrument_key", "").strip()
-        start_date     = payload.get("start_date")
-        end_date       = payload.get("end_date")
+        start_date = payload.get("start_date")
+        end_date = payload.get("end_date")
 
         if not (symbol and instrument_key and start_date and end_date):
-            return jsonify({"error": "symbol, instrument_key, start_date and end_date required"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "symbol, instrument_key, start_date and end_date required"
+                    }
+                ),
+                400,
+            )
 
         # ---- Detect Exchange ----
         exchange = detect_exchange(instrument_key)
@@ -1471,14 +1578,17 @@ def api_daily_candles():
 
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
 
         print(f"📡 Fetching DAILY: {url}")
         r = safe_requests.get(url, headers=headers, timeout=30)
 
         if r.status_code != 200:
-            return jsonify({"error": "Upstox API Error", "details": r.text}), r.status_code
+            return (
+                jsonify({"error": "Upstox API Error", "details": r.text}),
+                r.status_code,
+            )
 
         candles = (r.json() or {}).get("data", {}).get("candles", [])
 
@@ -1514,20 +1624,21 @@ def api_daily_candles():
             with conn.cursor() as cur:
                 execute_batch(cur, sql, rows, page_size=300)
 
-        return jsonify({
-            "status": "success",
-            "symbol": symbol,
-            "exchange": exchange,
-            "inserted": len(rows),
-            "total": len(candles)
-        })
+        return jsonify(
+            {
+                "status": "success",
+                "symbol": symbol,
+                "exchange": exchange,
+                "inserted": len(rows),
+                "total": len(candles),
+            }
+        )
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    
-    
+
 @app.route("/api/indicators/daily", methods=["GET"])
 def api_indicators_daily():
     try:
@@ -1554,17 +1665,22 @@ def api_indicators_daily():
         df["ts"] = pd.to_datetime(df["ts"])
         df = df.sort_values("ts").reset_index(drop=True)
 
-        df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].apply(
-            pd.to_numeric, errors="coerce"
-        )
+        df[["open", "high", "low", "close", "volume"]] = df[
+            ["open", "high", "low", "close", "volume"]
+        ].apply(pd.to_numeric, errors="coerce")
 
         close, high, low, volume = df["close"], df["high"], df["low"], df["volume"]
 
         # -------- Minimum Candle Check --------
         if len(df) < 60:
-            return jsonify({
-                "warning": f"Only {len(df)} candles — indicators may be low quality."
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "warning": f"Only {len(df)} candles — indicators may be low quality."
+                    }
+                ),
+                200,
+            )
 
         # -------- Indicators --------
         df["ema_9"] = ta.trend.EMAIndicator(close, 9).ema_indicator()
@@ -1576,29 +1692,39 @@ def api_indicators_daily():
 
         macd = ta.trend.MACD(close)
         df["macd"], df["macd_signal"], df["macd_hist"] = (
-            macd.macd(), macd.macd_signal(), macd.macd_diff()
+            macd.macd(),
+            macd.macd_signal(),
+            macd.macd_diff(),
         )
 
-        df["atr_14"] = ta.volatility.AverageTrueRange(high, low, close).average_true_range()
+        df["atr_14"] = ta.volatility.AverageTrueRange(
+            high, low, close
+        ).average_true_range()
 
         bb = ta.volatility.BollingerBands(close)
         df["bollinger_mid"] = bb.bollinger_mavg()
         df["bollinger_upper"] = bb.bollinger_hband()
         df["bollinger_lower"] = bb.bollinger_lband()
 
-        df["true_range"] = pd.concat([
-            (high - low).abs(),
-            (high - close.shift()).abs(),
-            (low - close.shift()).abs()
-        ], axis=1).max(axis=1)
+        df["true_range"] = pd.concat(
+            [
+                (high - low).abs(),
+                (high - close.shift()).abs(),
+                (low - close.shift()).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
 
         # -------- Supertrend --------
         def compute_supertrend(df, period=10, multiplier=3):
-            tr = pd.concat([
-                (df["high"] - df["low"]).abs(),
-                (df["high"] - df["close"].shift()).abs(),
-                (df["low"] - df["close"].shift()).abs()
-            ], axis=1).max(axis=1)
+            tr = pd.concat(
+                [
+                    (df["high"] - df["low"]).abs(),
+                    (df["high"] - df["close"].shift()).abs(),
+                    (df["low"] - df["close"].shift()).abs(),
+                ],
+                axis=1,
+            ).max(axis=1)
 
             atr = tr.rolling(period).mean()
             hl2 = (df["high"] + df["low"]) / 2
@@ -1624,18 +1750,26 @@ def api_indicators_daily():
         df["vwap"] = (close * volume).cumsum() / volume.cumsum()
         df["volume_sma_20"] = volume.rolling(20).mean()
         df["volume_sma_200"] = volume.rolling(200).mean()
-        df["volume_ratio"] = (volume / df["volume_sma_20"]).replace([np.inf, -np.inf], None)
-        df["obv"] = ta.volume.OnBalanceVolumeIndicator(close, volume).on_balance_volume()
+        df["volume_ratio"] = (volume / df["volume_sma_20"]).replace(
+            [np.inf, -np.inf], None
+        )
+        df["obv"] = ta.volume.OnBalanceVolumeIndicator(
+            close, volume
+        ).on_balance_volume()
 
         # -------- Signals --------
         df["signal"] = np.where(
-            (close > df["supertrend"]) & (df["ema_21"] > df["ema_50"]) & (df["rsi_14"] > 55),
+            (close > df["supertrend"])
+            & (df["ema_21"] > df["ema_50"])
+            & (df["rsi_14"] > 55),
             "BUY",
             np.where(
-                (close < df["supertrend"]) & (df["ema_21"] < df["ema_50"]) & (df["rsi_14"] < 45),
+                (close < df["supertrend"])
+                & (df["ema_21"] < df["ema_50"])
+                & (df["rsi_14"] < 45),
                 "SELL",
-                "NEUTRAL"
-            )
+                "NEUTRAL",
+            ),
         )
 
         df["signal_strength"] = df["rsi_14"].fillna(0).round(2)
@@ -1652,15 +1786,43 @@ def api_indicators_daily():
         # -------- UPSERT --------
         rows = [
             (
-                symbol, exchange, "1D", row.ts,
-                row.open, row.high, row.low, row.close, row.volume,
-                row.ema_9, row.ema_21, row.ema_50, row.ema_200, row.supertrend,
-                row.vwap, row.rsi_14, row.macd, row.macd_signal, row.macd_hist,
-                row.atr_14, row.bollinger_mid, row.bollinger_upper, row.bollinger_lower,
-                row.true_range, row.volume_sma_20, row.volume_sma_200, row.volume_ratio, row.obv,
-                None, None, None, None,
-                row.signal, row.signal_strength, row.supertrend_signal,
-                now, now
+                symbol,
+                exchange,
+                "1D",
+                row.ts,
+                row.open,
+                row.high,
+                row.low,
+                row.close,
+                row.volume,
+                row.ema_9,
+                row.ema_21,
+                row.ema_50,
+                row.ema_200,
+                row.supertrend,
+                row.vwap,
+                row.rsi_14,
+                row.macd,
+                row.macd_signal,
+                row.macd_hist,
+                row.atr_14,
+                row.bollinger_mid,
+                row.bollinger_upper,
+                row.bollinger_lower,
+                row.true_range,
+                row.volume_sma_20,
+                row.volume_sma_200,
+                row.volume_ratio,
+                row.obv,
+                None,
+                None,
+                None,
+                None,
+                row.signal,
+                row.signal_strength,
+                row.supertrend_signal,
+                now,
+                now,
             )
             for row in df.itertuples()
         ]
@@ -1698,10 +1860,8 @@ def api_indicators_daily():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
-    
 
-    
+
 from flask import request, jsonify
 import pandas as pd
 import numpy as np
@@ -1721,11 +1881,9 @@ def compute_supertrend(df, period=10, multiplier=3):
 
     # True Range
     prev_close = close.shift(1)
-    tr = pd.concat([
-        (high - low),
-        (high - prev_close).abs(),
-        (low - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat(
+        [(high - low), (high - prev_close).abs(), (low - prev_close).abs()], axis=1
+    ).max(axis=1)
 
     atr = tr.rolling(period).mean()
 
@@ -1742,15 +1900,15 @@ def compute_supertrend(df, period=10, multiplier=3):
             supertrend[i] = lower_band[i]
             continue
 
-        if close[i] > upper_band[i-1]:
+        if close[i] > upper_band[i - 1]:
             trend = 1
-        elif close[i] < lower_band[i-1]:
+        elif close[i] < lower_band[i - 1]:
             trend = -1
 
         if trend == 1:
-            supertrend[i] = max(lower_band[i], supertrend[i-1])
+            supertrend[i] = max(lower_band[i], supertrend[i - 1])
         else:
-            supertrend[i] = min(upper_band[i], supertrend[i-1])
+            supertrend[i] = min(upper_band[i], supertrend[i - 1])
 
     df["supertrend"] = supertrend
     df["supertrend_signal"] = np.where(close > df["supertrend"], "BUY", "SELL")
@@ -1769,7 +1927,14 @@ def api_indicators_intraday():
             return jsonify({"error": "symbol & timeframe required"}), 400
 
         # Normalize timeframe
-        TF_MAP = {"1":"1m","3":"3m","5":"5m","15":"15m","30":"30m","60":"60m"}
+        TF_MAP = {
+            "1": "1m",
+            "3": "3m",
+            "5": "5m",
+            "15": "15m",
+            "30": "30m",
+            "60": "60m",
+        }
         timeframe = TF_MAP.get(timeframe, timeframe)
 
         # Fetch candles
@@ -1783,7 +1948,7 @@ def api_indicators_intraday():
             df = pd.read_sql(sql, conn, params=[symbol, timeframe, exchange])
 
         if df.empty:
-            return jsonify({"error":"No data found"}), 404
+            return jsonify({"error": "No data found"}), 404
 
         # **** FIX 1 → correct timestamp format explicitly ****
         df["ts"] = pd.to_datetime(df["ts"], format="%d/%m/%Y %H:%M", errors="coerce")
@@ -1813,11 +1978,10 @@ def api_indicators_intraday():
         df["atr_14"] = atr.average_true_range()
 
         prev_close = close.shift(1)
-        df["true_range"] = pd.concat([
-            (high - low).abs(),
-            (high - prev_close).abs(),
-            (low - prev_close).abs()
-        ], axis=1).max(axis=1)
+        df["true_range"] = pd.concat(
+            [(high - low).abs(), (high - prev_close).abs(), (low - prev_close).abs()],
+            axis=1,
+        ).max(axis=1)
 
         bb = ta.volatility.BollingerBands(close, 20, 2)
         df["bollinger_mid"] = bb.bollinger_mavg()
@@ -1832,12 +1996,9 @@ def api_indicators_intraday():
 
         # Replace VWAP block
         typical = (high + low + close) / 3
-        df["vwap"] = (
-            (typical * volume).groupby(df["date"]).cumsum()
-            /
-            volume.groupby(df["date"]).cumsum().replace(0, np.nan)
-        )
-
+        df["vwap"] = (typical * volume).groupby(df["date"]).cumsum() / volume.groupby(
+            df["date"]
+        ).cumsum().replace(0, np.nan)
 
         # Volume Signals
         df["volume_sma_20"] = volume.rolling(20).mean()
@@ -1845,16 +2006,16 @@ def api_indicators_intraday():
         df["volume_ratio"] = df["volume"] / df["volume_sma_20"].replace(0, np.nan)
 
         # OBV
-        df["obv"] = ta.volume.OnBalanceVolumeIndicator(close, volume).on_balance_volume()
-        
-        
+        df["obv"] = ta.volume.OnBalanceVolumeIndicator(
+            close, volume
+        ).on_balance_volume()
+
         # Convert UTC → IST
         df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
         df["ts"] = df["ts"].dt.tz_convert("Asia/Kolkata")
         df = df.sort_values("ts")
 
-
-                # ==== ORB FIXED LOGIC ====
+        # ==== ORB FIXED LOGIC ====
         orb_start = dtime(9, 15)
         orb_end = dtime(9, 20)
 
@@ -1872,10 +2033,9 @@ def api_indicators_intraday():
             day_rows = df[df["ts"].dt.date == current_date]
 
             window = day_rows[
-                (day_rows["ts"].dt.time >= orb_start) &
-                (day_rows["ts"].dt.time <= orb_end)
+                (day_rows["ts"].dt.time >= orb_start)
+                & (day_rows["ts"].dt.time <= orb_end)
             ]
-        
 
             if window.empty:
                 continue
@@ -1894,14 +2054,11 @@ def api_indicators_intraday():
         df["orb_breakout"] = df["close"] > df["orb_high"]
         df["orb_breakdown"] = df["close"] < df["orb_low"]
 
- 
-
         # ==== Final Signal Engine ====
         df["supertrend_signal"] = np.where(df["close"] > df["supertrend"], "UP", "DOWN")
 
         df["signal"] = np.where(
-            df["orb_breakout"], "BUY",
-            np.where(df["orb_breakdown"], "SELL", "HOLD")
+            df["orb_breakout"], "BUY", np.where(df["orb_breakdown"], "SELL", "HOLD")
         )
 
         df["signal_strength"] = np.round(df["rsi_14"].fillna(50) / 2, 2)
@@ -1913,14 +2070,43 @@ def api_indicators_intraday():
         # ==== UPSERT (unchanged) ====
         rows = [
             (
-                symbol, exchange, timeframe, row.ts, row.open, row.high, row.low, row.close, row.volume,
-                row.ema_9, row.ema_21, row.ema_50, row.ema_200, row.supertrend,
-                row.vwap, row.rsi_14, row.macd, row.macd_signal, row.macd_hist, row.atr_14,
-                row.bollinger_mid, row.bollinger_upper, row.bollinger_lower, row.true_range,
-                row.volume_sma_20, row.volume_sma_200, row.volume_ratio, row.obv,
-                row.orb_high, row.orb_low, row.orb_breakout, row.orb_breakdown,
-                row.signal, row.signal_strength, row.supertrend_signal,
-                now, now
+                symbol,
+                exchange,
+                timeframe,
+                row.ts,
+                row.open,
+                row.high,
+                row.low,
+                row.close,
+                row.volume,
+                row.ema_9,
+                row.ema_21,
+                row.ema_50,
+                row.ema_200,
+                row.supertrend,
+                row.vwap,
+                row.rsi_14,
+                row.macd,
+                row.macd_signal,
+                row.macd_hist,
+                row.atr_14,
+                row.bollinger_mid,
+                row.bollinger_upper,
+                row.bollinger_lower,
+                row.true_range,
+                row.volume_sma_20,
+                row.volume_sma_200,
+                row.volume_ratio,
+                row.obv,
+                row.orb_high,
+                row.orb_low,
+                row.orb_breakout,
+                row.orb_breakdown,
+                row.signal,
+                row.signal_strength,
+                row.supertrend_signal,
+                now,
+                now,
             )
             for row in df.itertuples()
         ]
@@ -1954,7 +2140,8 @@ def api_indicators_intraday():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
+
+
 @app.route("/api/offline/label-market-context", methods=["POST"])
 def offline_label_market_context():
     data = request.get_json()
@@ -1973,7 +2160,8 @@ def offline_label_market_context():
     # LOAD INDICATORS
     # ========================================================
     with get_db_conn() as conn:
-        df = pd.read_sql("""
+        df = pd.read_sql(
+            """
             SELECT
                 i.*,
                 v.vix AS vix
@@ -1986,38 +2174,31 @@ def offline_label_market_context():
               AND i.exchange = %s
               AND i.timeframe = %s
             ORDER BY i.ts ASC
-        """, conn, params=[symbol, exchange, timeframe])
-
-
-
+        """,
+            conn,
+            params=[symbol, exchange, timeframe],
+        )
 
     if df.empty or len(df) < lookahead + window:
         return jsonify({"error": "Not enough indicator data"}), 400
 
     df["ts"] = pd.to_datetime(df["ts"])
     df = df.reset_index(drop=True)
-    
+
     # =========================================================
     # TIMEFRAME CONFIGURATION
     # =========================================================
-    TF_MINUTES = {
-        "1m": 1,
-        "3m": 3,
-        "5m": 5,
-        "15m": 15
-    }
+    TF_MINUTES = {"1m": 1, "3m": 3, "5m": 5, "15m": 15}
 
     tf_min = TF_MINUTES.get(timeframe)
     if not tf_min:
         return jsonify({"error": f"Unsupported timeframe {timeframe}"}), 400
 
     # Candle index within the trading day (timeframe-aware)
-    df["bar_of_day"] = (
-        (df["ts"].dt.hour * 60 + df["ts"].dt.minute - 555) // tf_min
-    )
+    df["bar_of_day"] = (df["ts"].dt.hour * 60 + df["ts"].dt.minute - 555) // tf_min
 
     # Timeframe-scaled rolling windows
-    ROLL_5  = max(2, int(5  / tf_min))
+    ROLL_5 = max(2, int(5 / tf_min))
     ROLL_10 = max(3, int(10 / tf_min))
     ROLL_20 = max(5, int(20 / tf_min))
 
@@ -2026,13 +2207,7 @@ def offline_label_market_context():
     IMPULSE_WINDOW_BARS = int(300 / tf_min)
 
     # Volume scaling (important for higher TFs)
-    VOLUME_MULT = {
-        "1m": 1.5,
-        "3m": 1.4,
-        "5m": 1.3,
-        "15m": 1.2
-    }[timeframe]
-
+    VOLUME_MULT = {"1m": 1.5, "3m": 1.4, "5m": 1.3, "15m": 1.2}[timeframe]
 
     # =========================================================
     # PRICE LOCATION CONTEXT
@@ -2054,8 +2229,7 @@ def offline_label_market_context():
     df["prev_day_close"] = df["date"].map(daily_close)
     df["gap_pct"] = (df["open"] - df["prev_day_close"]) / df["prev_day_close"]
     df["gap_flag"] = (df["gap_pct"].abs() > 0.003).astype(int)
-    
-    
+
     # ================= GAP CONTEXT (SESSION-LEVEL) =================
 
     # Use previous day's ATR as normalization (robust)
@@ -2065,27 +2239,18 @@ def offline_label_market_context():
     df["gap_atr"] = np.where(
         df["prev_day_atr"] > 0,
         (df["open"] - df["prev_day_close"]) / df["prev_day_atr"],
-        0
+        0,
     )
 
     df["gap_dir"] = np.select(
-        [df["gap_atr"] > 0, df["gap_atr"] < 0],
-        ["UP", "DOWN"],
-        default="NONE"
+        [df["gap_atr"] > 0, df["gap_atr"] < 0], ["UP", "DOWN"], default="NONE"
     )
 
     df["gap_regime"] = np.select(
-        [
-            df["gap_atr"].abs() < 0.5,
-            df["gap_atr"].abs() < 1.2
-        ],
-        [
-            "NO_GAP",
-            "MODERATE_GAP"
-        ],
-        default="LARGE_GAP"
+        [df["gap_atr"].abs() < 0.5, df["gap_atr"].abs() < 1.2],
+        ["NO_GAP", "MODERATE_GAP"],
+        default="LARGE_GAP",
     )
-
 
     # =========================================================
     # MARKET REGIME CONTEXT
@@ -2093,76 +2258,62 @@ def offline_label_market_context():
     df["ema_21_slope"] = df["ema_21"].diff().rolling(ROLL_5).mean()
     df["ema_50_slope"] = df["ema_50"].diff().rolling(ROLL_5).mean()
 
-
     df["atr_pct"] = df["atr_14"] / df["close"]
 
-    df["bb_width"] = (
-        (df["bollinger_upper"] - df["bollinger_lower"]) /
-        df["bollinger_mid"]
-    )
+    df["bb_width"] = (df["bollinger_upper"] - df["bollinger_lower"]) / df[
+        "bollinger_mid"
+    ]
 
     df["range_expansion"] = (
         df["true_range"] > df["true_range"].rolling(ROLL_5).mean()
     ).astype(int)
 
-
     # =========================================================
     # PARTICIPATION CONTEXT
     # =========================================================
-    df["volume_z"] = (
-        (df["volume"] - df["volume"].rolling(ROLL_20).mean()) /
-        df["volume"].rolling(ROLL_20).std()
-    )
+    df["volume_z"] = (df["volume"] - df["volume"].rolling(ROLL_20).mean()) / df[
+        "volume"
+    ].rolling(ROLL_20).std()
 
     df["effort_result"] = df["volume"] * df["true_range"]
 
     # =========================================================
     # STRUCTURE & MOMENTUM QUALITY
     # =========================================================
-    df["range_efficiency"] = (
-        (df["close"] - df["open"]).abs() /
-        df["true_range"].replace(0, np.nan)
-    )
+    df["range_efficiency"] = (df["close"] - df["open"]).abs() / df[
+        "true_range"
+    ].replace(0, np.nan)
 
     df["volume_expansion"] = (
         df["volume"] > df["volume"].rolling(ROLL_20).mean() * VOLUME_MULT
     ).astype(int)
 
-    df["atr_expanding"] = (
-        df["atr_14"] > df["atr_14"].rolling(ROLL_10).mean()
-    ).astype(int)
-
+    df["atr_expanding"] = (df["atr_14"] > df["atr_14"].rolling(ROLL_10).mean()).astype(
+        int
+    )
 
     df["vwap_acceptance"] = (df["vwap_dist_pct"].abs() < 0.01).astype(int)
 
     df["momentum_decay"] = (
-        df["range_efficiency"] <
-        df["range_efficiency"].rolling(ROLL_10).mean()
+        df["range_efficiency"] < df["range_efficiency"].rolling(ROLL_10).mean()
     ).astype(int)
-
 
     df["candle_overlap"] = (
-        df["high"].rolling(ROLL_5).min() <
-        df["low"].rolling(ROLL_5).max()
+        df["high"].rolling(ROLL_5).min() < df["low"].rolling(ROLL_5).max()
     ).astype(int)
-
 
     # =========================================================
     # TIME CONTEXT
     # =========================================================
     df["minute_of_day"] = df["bar_of_day"] * tf_min
 
-
     df["session_bucket"] = np.select(
-        [df["minute_of_day"] < 45, df["minute_of_day"] < 300],
-        [0, 1],
-        default=2
+        [df["minute_of_day"] < 45, df["minute_of_day"] < 300], [0, 1], default=2
     )
 
     df["expiry_proximity"] = (
         df["ts"].dt.day >= (df["ts"].dt.days_in_month - 2)
     ).astype(int)
-
 
     # VIX level (forward-filled to handle holidays)
     if "vix" in df.columns:
@@ -2171,20 +2322,14 @@ def offline_label_market_context():
         df["vix_level"] = 0.0
 
     # Day-over-day VIX change (risk expansion / contraction)
-    df["vix"] = df["vix_level"]  
+    df["vix"] = df["vix_level"]
     df["vix_change"] = df["vix_level"].diff().fillna(0)
 
     # VIX regime (volatility environment)
     df["vix_regime"] = np.select(
-        [
-            df["vix_level"] < 12,
-            df["vix_level"] < 18
-        ],
-        [
-            "LOW_VOL",
-            "NORMAL_VOL"
-        ],
-        default="HIGH_VOL"
+        [df["vix_level"] < 12, df["vix_level"] < 18],
+        ["LOW_VOL", "NORMAL_VOL"],
+        default="HIGH_VOL",
     )
 
     # News / event placeholder (future use)
@@ -2198,56 +2343,62 @@ def offline_label_market_context():
     # CLEAN FEATURES
     # =========================================================
     FEATURE_COLS = [
-        "vwap_dist_pct","day_high_dist","day_low_dist","orb_dist_pct",
-        "gap_pct","gap_flag",
-        "ema_21_slope","ema_50_slope",
-        "adx_14","atr_pct","bb_width","range_expansion",
-        "volume_z","effort_result",
-        "range_efficiency","volume_expansion",
-        "atr_expanding","vwap_acceptance",
-        "momentum_decay","candle_overlap",
-        "minute_of_day","session_bucket","expiry_proximity",
-        "vix_level","vix_change","news_flag"
+        "vwap_dist_pct",
+        "day_high_dist",
+        "day_low_dist",
+        "orb_dist_pct",
+        "gap_pct",
+        "gap_flag",
+        "ema_21_slope",
+        "ema_50_slope",
+        "adx_14",
+        "atr_pct",
+        "bb_width",
+        "range_expansion",
+        "volume_z",
+        "effort_result",
+        "range_efficiency",
+        "volume_expansion",
+        "atr_expanding",
+        "vwap_acceptance",
+        "momentum_decay",
+        "candle_overlap",
+        "minute_of_day",
+        "session_bucket",
+        "expiry_proximity",
+        "vix_level",
+        "vix_change",
+        "news_flag",
     ]
 
     for c in FEATURE_COLS:
         df[c] = df[c].replace([np.inf, -np.inf], np.nan).fillna(0)
-    
-    
+
     # =========================================================
     # MARKET PHASE + STATE MACHINE
     # =========================================================
     df["market_phase"] = "UNCLASSIFIED"
-    
-    df["session_context"] = None      # GAP or BALANCE
-    df["gap_resolved"] = 0 # hard lock
-    
+
+    df["session_context"] = None  # GAP or BALANCE
+    df["gap_resolved"] = 0  # hard lock
+
     df["gap_auction_started"] = 0
-    
+
     df["gap_auction_active"] = 0
-
-
-
 
     # =========================================================
     # SESSION CONTEXT INITIALIZATION (ONCE PER DAY)
     # =========================================================
     df.loc[df["bar_of_day"] == 0, "session_context"] = np.where(
-        df.loc[df["bar_of_day"] == 0, "gap_regime"] == "LARGE_GAP",
-        "GAP",
-        "BALANCE"
+        df.loc[df["bar_of_day"] == 0, "gap_regime"] == "LARGE_GAP", "GAP", "BALANCE"
     )
 
     # Forward-fill session context for rest of day
     df["session_context"] = df.groupby(df["date"])["session_context"].ffill()
-    
+
     df.loc[df["bar_of_day"] == 0, "gap_auction_started"] = 0
     df.loc[df["bar_of_day"] == 0, "gap_auction_active"] = 0
     df.loc[df["bar_of_day"] == 0, "gap_resolved"] = 0
-
-
-
-
 
     # Max discovery window (time-based, TF aware)
     GAP_AUCTION_MAX_MINUTES = 90
@@ -2255,173 +2406,154 @@ def offline_label_market_context():
 
     # ---------- GAP AUCTION ENTRY ----------
     gap_auction_entry = (
-        (df["session_context"] == "GAP") &
-        (df["gap_resolved"] == 0) &
-        (df["candle_overlap"] == 1) &
-        (df["range_efficiency"] < 0.30) &
-        (df["atr_expanding"] == 0)
+        (df["session_context"] == "GAP")
+        & (df["gap_resolved"] == 0)
+        & (df["candle_overlap"] == 1)
+        & (df["range_efficiency"] < 0.30)
+        & (df["atr_expanding"] == 0)
     )
 
     # ---------- STRUCTURAL RESOLUTION ----------
     gap_auction_resolved_structural = (
-        (df["range_efficiency"] > 0.45) &
-        (df["atr_expanding"] == 1) &
-        (df["vwap_dist_pct"].abs() > 0.004)
+        (df["range_efficiency"] > 0.45)
+        & (df["atr_expanding"] == 1)
+        & (df["vwap_dist_pct"].abs() > 0.004)
     )
 
     # ---------- FAILED RESOLUTION ----------
     gap_auction_failed = (
-        (df["range_efficiency"] < 0.20) &
-        (df["volume"] < df["volume"].rolling(ROLL_20).mean()) &
-        (df["vwap_acceptance"] == 1)
+        (df["range_efficiency"] < 0.20)
+        & (df["volume"] < df["volume"].rolling(ROLL_20).mean())
+        & (df["vwap_acceptance"] == 1)
     )
-
 
     # ================= BASE MARKET CONTEXT =================
     balance_chop = (
-        (df["range_efficiency"] < 0.25) &
-        (df["atr_expanding"] == 0) &
-        (df["vwap_dist_pct"].abs() < 0.003) &
-        (df["ema_21_slope"].abs() < 0.0001)
+        (df["range_efficiency"] < 0.25)
+        & (df["atr_expanding"] == 0)
+        & (df["vwap_dist_pct"].abs() < 0.003)
+        & (df["ema_21_slope"].abs() < 0.0001)
     )
 
     trend_acceptance = (
-        (df["ema_21_slope"] > 0) &
-        (df["close"] > df["vwap"]) &
-        (
-            (df["range_efficiency"] >= 0.20) |
-            ((df["gap_regime"] == "LARGE_GAP") & (df["range_efficiency"] >= 0.15))
-        ) &
-        (df["atr_expanding"] == 0)
+        (df["ema_21_slope"] > 0)
+        & (df["close"] > df["vwap"])
+        & (
+            (df["range_efficiency"] >= 0.20)
+            | ((df["gap_regime"] == "LARGE_GAP") & (df["range_efficiency"] >= 0.15))
+        )
+        & (df["atr_expanding"] == 0)
     )
 
     compression = (
-        (df["atr_pct"] < df["atr_pct"].rolling(ROLL_20).mean() * 0.7) &
-        (df["bb_width"] < df["bb_width"].rolling(ROLL_20).mean() * 0.7) &
-        (df["range_efficiency"] < 0.30)
+        (df["atr_pct"] < df["atr_pct"].rolling(ROLL_20).mean() * 0.7)
+        & (df["bb_width"] < df["bb_width"].rolling(ROLL_20).mean() * 0.7)
+        & (df["range_efficiency"] < 0.30)
     )
-
-
 
     # ================= BASE REGIMES (ONLY IF UNCLASSIFIED) =================
     df.loc[
-        balance_chop &
-        (df["market_phase"] == "UNCLASSIFIED") &
-        (df["gap_auction_active"] == 0)
+        balance_chop
+        & (df["market_phase"] == "UNCLASSIFIED")
+        & (df["gap_auction_active"] == 0)
     ]
 
     df.loc[
-        trend_acceptance & (df["market_phase"] == "UNCLASSIFIED"),
-        "market_phase"
+        trend_acceptance & (df["market_phase"] == "UNCLASSIFIED"), "market_phase"
     ] = "TREND_ACCEPTANCE"
 
-    df.loc[
-        compression & (df["market_phase"] == "UNCLASSIFIED"),
-        "market_phase"
-    ] = "COMPRESSION"
+    df.loc[compression & (df["market_phase"] == "UNCLASSIFIED"), "market_phase"] = (
+        "COMPRESSION"
+    )
 
     # ================= TREND CONDITIONS =================
     trend_valid = (
-        (df["ema_21_slope"] > 0) &
-        (df["close"] > df["vwap"]) &
-        (df["range_efficiency"] > 0.35)
+        (df["ema_21_slope"] > 0)
+        & (df["close"] > df["vwap"])
+        & (df["range_efficiency"] > 0.35)
     )
 
     trend_pause = (
-        (df["ema_21_slope"] > 0) &
-        (df["close"] > df["ema_21"]) &
-        (df["range_efficiency"] >= 0.20) &
-        (df["range_efficiency"] < 0.35) &
-        (df["volume"] > df["volume"].rolling(ROLL_20).mean())
+        (df["ema_21_slope"] > 0)
+        & (df["close"] > df["ema_21"])
+        & (df["range_efficiency"] >= 0.20)
+        & (df["range_efficiency"] < 0.35)
+        & (df["volume"] > df["volume"].rolling(ROLL_20).mean())
     )
 
     trend_digestion = (
-        (df["range_efficiency"] >= 0.15) &
-        (df["range_efficiency"] < 0.30) &
-        (df["atr_expanding"] == 0) &
-        (df["close"] > df["vwap"]) &
-        (df["ema_21_slope"] > 0)
+        (df["range_efficiency"] >= 0.15)
+        & (df["range_efficiency"] < 0.30)
+        & (df["atr_expanding"] == 0)
+        & (df["close"] > df["vwap"])
+        & (df["ema_21_slope"] > 0)
     )
 
     # ================= ABSORPTION / DISTRIBUTION =================
     absorption = (
-        (df["close"] > df["vwap"]) &
-        (df["volume"] > df["volume"].rolling(ROLL_20).mean()) &
-        (df["atr_expanding"] == 0) &
-        (df["range_efficiency"] < 0.35) &
-        (df["vwap_acceptance"] == 1)
+        (df["close"] > df["vwap"])
+        & (df["volume"] > df["volume"].rolling(ROLL_20).mean())
+        & (df["atr_expanding"] == 0)
+        & (df["range_efficiency"] < 0.35)
+        & (df["vwap_acceptance"] == 1)
     )
 
-    absorption_break = (
-        (df["range_efficiency"] > 0.45) |
-        (df["atr_expanding"] == 1)
-    )
+    absorption_break = (df["range_efficiency"] > 0.45) | (df["atr_expanding"] == 1)
 
     distribution = absorption & (
         (df["bb_width"] > df["bb_width"].rolling(ROLL_20).mean())
     )
 
-    distribution_break = (
-        (df["close"] > df["vwap"]) |
-        (df["range_efficiency"] > 0.45)
-    )
+    distribution_break = (df["close"] > df["vwap"]) | (df["range_efficiency"] > 0.45)
 
     # ================= IMPULSE (EVENT DETECTION) =================
     base_impulse = (
-        (df["volume_expansion"] == 1) &
-        (df["atr_expanding"] == 1) &
-        (df["range_efficiency"] > 0.6) &
-        (df["momentum_decay"] == 0) &
-        (df["vwap_dist_pct"].abs() > 0.004)
+        (df["volume_expansion"] == 1)
+        & (df["atr_expanding"] == 1)
+        & (df["range_efficiency"] > 0.6)
+        & (df["momentum_decay"] == 0)
+        & (df["vwap_dist_pct"].abs() > 0.004)
     )
-    
-    base_impulse &= (
-        (df["bar_of_day"] < IMPULSE_WINDOW_BARS) |
-        (df["volume"] > df["volume"].rolling(ROLL_20).mean() * 2)
+
+    base_impulse &= (df["bar_of_day"] < IMPULSE_WINDOW_BARS) | (
+        df["volume"] > df["volume"].rolling(ROLL_20).mean() * 2
     )
 
     bullish_impulse = base_impulse & (
-        (df["close"] > df["open"]) &
-        (df["close"] > df["ema_21"]) &
-        (df["ema_21_slope"] > 0) &
-        (df["vwap_dist_pct"] > 0)
+        (df["close"] > df["open"])
+        & (df["close"] > df["ema_21"])
+        & (df["ema_21_slope"] > 0)
+        & (df["vwap_dist_pct"] > 0)
     )
 
     bearish_impulse = base_impulse & (
-        (df["close"] < df["open"]) &
-        (df["close"] < df["ema_21"]) &
-        (df["ema_21_slope"] < 0) &
-        (df["vwap_dist_pct"] < 0)
+        (df["close"] < df["open"])
+        & (df["close"] < df["ema_21"])
+        & (df["ema_21_slope"] < 0)
+        & (df["vwap_dist_pct"] < 0)
     )
 
     neutral_impulse = base_impulse & ~bullish_impulse & ~bearish_impulse
-    
+
     digestion = (
-        (df["atr_expanding"] == 0) &
-        (df["range_efficiency"] >= 0.15) &
-        (df["range_efficiency"] < 0.35) &
-        (df["volume"] <= df["volume"].rolling(ROLL_20).mean() * 1.2)
+        (df["atr_expanding"] == 0)
+        & (df["range_efficiency"] >= 0.15)
+        & (df["range_efficiency"] < 0.35)
+        & (df["volume"] <= df["volume"].rolling(ROLL_20).mean() * 1.2)
     )
 
-
     # ================= IMPULSE ASSIGNMENT (ONLY IF UNCLASSIFIED) =================
-    df.loc[
-        bullish_impulse & (df["market_phase"] == "UNCLASSIFIED"),
-        "market_phase"
-    ] = "IMPULSE_BULL"
+    df.loc[bullish_impulse & (df["market_phase"] == "UNCLASSIFIED"), "market_phase"] = (
+        "IMPULSE_BULL"
+    )
 
-    df.loc[
-        bearish_impulse & (df["market_phase"] == "UNCLASSIFIED"),
-        "market_phase"
-    ] = "IMPULSE_BEAR"
+    df.loc[bearish_impulse & (df["market_phase"] == "UNCLASSIFIED"), "market_phase"] = (
+        "IMPULSE_BEAR"
+    )
 
-    df.loc[
-        neutral_impulse & (df["market_phase"] == "UNCLASSIFIED"),
-        "market_phase"
-    ] = "IMPULSE_NEUTRAL"
-    
-    
-
+    df.loc[neutral_impulse & (df["market_phase"] == "UNCLASSIFIED"), "market_phase"] = (
+        "IMPULSE_NEUTRAL"
+    )
 
     # =========================================================
     # POST-IMPULSE STATE MACHINE (BEHAVIOURAL)
@@ -2432,7 +2564,6 @@ def offline_label_market_context():
 
     vol_ma20 = df["volume"].rolling(ROLL_20).mean()
 
-
     for i in range(1, len(df)):
 
         # =========================================================
@@ -2441,10 +2572,10 @@ def offline_label_market_context():
 
         # ENTER GAP AUCTION (ONLY ONCE, ONLY IN GAP SESSION)
         if (
-            df.at[i, "session_context"] == "GAP" and
-            df.at[i, "gap_resolved"] == 0 and
-            df.at[i, "gap_auction_started"] == 0 and
-            gap_auction_entry.iloc[i]
+            df.at[i, "session_context"] == "GAP"
+            and df.at[i, "gap_resolved"] == 0
+            and df.at[i, "gap_auction_started"] == 0
+            and gap_auction_entry.iloc[i]
         ):
             df.at[i, "gap_auction_started"] = 1
             df.at[i, "gap_auction_active"] = 1
@@ -2452,12 +2583,8 @@ def offline_label_market_context():
             # DO NOT touch market_phase here
             continue
 
-
         # MANAGE GAP AUCTION (UNTIL RESOLUTION)
-        if (
-            df.at[i - 1, "gap_auction_active"] == 1 and
-            df.at[i, "gap_resolved"] == 0
-        ):
+        if df.at[i - 1, "gap_auction_active"] == 1 and df.at[i, "gap_resolved"] == 0:
             start_bar = df.at[i - 1, "gap_auction_start_bar"]
             bars_elapsed = df.at[i, "bar_of_day"] - start_bar
 
@@ -2481,7 +2608,7 @@ def offline_label_market_context():
 
             df.at[i, "gap_auction_active"] = 1
             # market_phase continues untouched
-            
+
         # =========================================================
         # AUCTION IMPULSE LABELING (OBSERVATION ONLY)
         # =========================================================
@@ -2498,9 +2625,6 @@ def offline_label_market_context():
 
             # Do NOT activate post-impulse logic
             # Do NOT change gap state
-    
-
-
 
         # =========================================================
         # POST-GAP HARD LOCK (NO GAP CAN RETURN)
@@ -2508,16 +2632,12 @@ def offline_label_market_context():
         if df.at[i - 1, "gap_resolved"] == 1:
             df.at[i, "gap_resolved"] = 1
             df.at[i, "session_context"] = "BALANCE"
-            
+
         # -------- IMPULSE PERMISSION (SESSION AWARE) --------
         impulse_allowed = True
 
         if df.at[i, "gap_auction_active"] == 1:
             impulse_allowed = False
-    
-
-
-
 
         # -------- ENTER / MAINTAIN POST-IMPULSE --------
         if impulse_allowed and bullish_impulse.iloc[i - 1]:
@@ -2539,11 +2659,17 @@ def offline_label_market_context():
             impulse_dir = df.at[i, "impulse_dir"]
 
             if (
-                df.at[i, "range_efficiency"] < 0.25 and
-                df.at[i, "atr_expanding"] == 0 and
-                (
-                    (impulse_dir == "BULL" and df.at[i, "close"] < df.at[i - 1, "close"]) or
-                    (impulse_dir == "BEAR" and df.at[i, "close"] > df.at[i - 1, "close"])
+                df.at[i, "range_efficiency"] < 0.25
+                and df.at[i, "atr_expanding"] == 0
+                and (
+                    (
+                        impulse_dir == "BULL"
+                        and df.at[i, "close"] < df.at[i - 1, "close"]
+                    )
+                    or (
+                        impulse_dir == "BEAR"
+                        and df.at[i, "close"] > df.at[i - 1, "close"]
+                    )
                 )
             ):
                 df.at[i, "market_phase"] = "PULLBACK_FAIL"
@@ -2551,18 +2677,18 @@ def offline_label_market_context():
                 continue
 
             if (
-                df.at[i, "volume"] > vol_ma20.iloc[i] and
-                df.at[i, "atr_expanding"] == 0 and
-                df.at[i, "range_efficiency"] < 0.35
+                df.at[i, "volume"] > vol_ma20.iloc[i]
+                and df.at[i, "atr_expanding"] == 0
+                and df.at[i, "range_efficiency"] < 0.35
             ):
                 df.at[i, "market_phase"] = "ABSORPTION"
                 df.at[i, "post_impulse_story"] = "EFFORT_NO_PROGRESS"
                 continue
 
             if (
-                (impulse_dir == "BULL" and df.at[i, "close"] < df.at[i - 1, "low"]) or
-                (impulse_dir == "BEAR" and df.at[i, "close"] > df.at[i - 1, "high"]) or
-                (impulse_dir == "NEUTRAL" and df.at[i, "range_efficiency"] < 0.20)
+                (impulse_dir == "BULL" and df.at[i, "close"] < df.at[i - 1, "low"])
+                or (impulse_dir == "BEAR" and df.at[i, "close"] > df.at[i - 1, "high"])
+                or (impulse_dir == "NEUTRAL" and df.at[i, "range_efficiency"] < 0.20)
             ):
                 df.at[i, "market_phase"] = "REJECTION"
                 df.at[i, "post_impulse_story"] = "STRUCTURAL_FAILURE"
@@ -2570,11 +2696,14 @@ def offline_label_market_context():
                 continue
 
             if (
-                df.at[i, "atr_expanding"] == 1 and
-                df.at[i, "range_efficiency"] > 0.50 and
-                (
-                    (impulse_dir == "BULL" and df.at[i, "close"] > df.at[i - 1, "high"]) or
-                    (impulse_dir == "BEAR" and df.at[i, "close"] < df.at[i - 1, "low"])
+                df.at[i, "atr_expanding"] == 1
+                and df.at[i, "range_efficiency"] > 0.50
+                and (
+                    (impulse_dir == "BULL" and df.at[i, "close"] > df.at[i - 1, "high"])
+                    or (
+                        impulse_dir == "BEAR"
+                        and df.at[i, "close"] < df.at[i - 1, "low"]
+                    )
                 )
             ):
                 df.at[i, "market_phase"] = "EXPANSION"
@@ -2583,7 +2712,6 @@ def offline_label_market_context():
                 continue
 
             df.at[i, "market_phase"] = "POST_IMPULSE_DIGESTION"
-
 
         # -------- NORMAL TREND LOGIC --------
         prev_phase = df.at[i - 1, "market_phase"]
@@ -2627,33 +2755,25 @@ def offline_label_market_context():
             else:
                 df.at[i, "market_phase"] = "BALANCE_CHOP"
 
-
-    
-    
-    
     # =========================================================
     # ORB RULE LOGIC (LONG SIDE)
     # =========================================================
     df["orb_breakout"] = (
-        (df["close"] > df["orb_high"]) &
-        df["bar_of_day"] <= int(90 / tf_min)
+        (df["close"] > df["orb_high"]) & df["bar_of_day"] <= int(90 / tf_min)
     ).astype(int)
 
     df["orb_quality"] = (
-        (df["volume_expansion"] == 1) &
-        (df["atr_expanding"] == 1) &
-        (df["range_efficiency"] > 0.45)
+        (df["volume_expansion"] == 1)
+        & (df["atr_expanding"] == 1)
+        & (df["range_efficiency"] > 0.45)
     ).astype(int)
 
     df["orb_location"] = (
-        (df["close"] > df["ema_21"]) &
-        (df["vwap_dist_pct"] > 0)
+        (df["close"] > df["ema_21"]) & (df["vwap_dist_pct"] > 0)
     ).astype(int)
 
     df["ORB"] = (
-        (df["orb_breakout"] == 1) &
-        (df["orb_quality"] == 1) &
-        (df["orb_location"] == 1)
+        (df["orb_breakout"] == 1) & (df["orb_quality"] == 1) & (df["orb_location"] == 1)
     ).astype(int)
 
     # =========================================================
@@ -2666,83 +2786,81 @@ def offline_label_market_context():
     rule_rows = []
 
     for _, r in df.iterrows():
-        market_rows.append((
-            symbol, exchange, timeframe, r["ts"],
-            r["market_phase"],
-            r["ema_21_slope"],
-            r["vwap_dist_pct"], r["day_high_dist"], r["day_low_dist"],
-            r["orb_dist_pct"], r["gap_pct"], r["minute_of_day"],
-            r["volume_expansion"], r["atr_expanding"],
-            r["range_efficiency"], r["vwap_acceptance"],
-            r["momentum_decay"], r["candle_overlap"],
-            r["vix"],
-            r["vix_change"],
-            r["vix_regime"],
-            r["gap_atr"],
-            r["gap_dir"],
-            r["gap_regime"],
-            now
-        ))
+        market_rows.append(
+            (
+                symbol,
+                exchange,
+                timeframe,
+                r["ts"],
+                r["market_phase"],
+                r["ema_21_slope"],
+                r["vwap_dist_pct"],
+                r["day_high_dist"],
+                r["day_low_dist"],
+                r["orb_dist_pct"],
+                r["gap_pct"],
+                r["minute_of_day"],
+                r["volume_expansion"],
+                r["atr_expanding"],
+                r["range_efficiency"],
+                r["vwap_acceptance"],
+                r["momentum_decay"],
+                r["candle_overlap"],
+                r["vix"],
+                r["vix_change"],
+                r["vix_regime"],
+                r["gap_atr"],
+                r["gap_dir"],
+                r["gap_regime"],
+                now,
+            )
+        )
 
         rules = {
-            "ORB": (
-                (r["ORB"] == 1)
-            ),
-
-            "EMA_TREND": (
-                (r["ema_21_slope"] > 0) and
-                (r["close"] > r["ema_21"])
-            ),
-
-            "VWAP_TREND": (
-                (r["vwap_dist_pct"] > 0) and
-                (r["vwap_acceptance"] == 0)
-            ),
-
-            "ATR_EXPANSION": (
-                r["atr_expanding"] == 1
-            ),
-
+            "ORB": ((r["ORB"] == 1)),
+            "EMA_TREND": ((r["ema_21_slope"] > 0) and (r["close"] > r["ema_21"])),
+            "VWAP_TREND": ((r["vwap_dist_pct"] > 0) and (r["vwap_acceptance"] == 0)),
+            "ATR_EXPANSION": (r["atr_expanding"] == 1),
             "VOLUME_EXPANSION": (
-                (r["volume_expansion"] == 1) and
-                (r["range_efficiency"] > 0.35)
+                (r["volume_expansion"] == 1) and (r["range_efficiency"] > 0.35)
             ),
         }
 
-
         for name, eligible in rules.items():
-            rule_rows.append((
-                symbol,                                   # symbol
-                exchange,                                 # exchange
-                timeframe,                                # timeframe
-                r["ts"],                                  # ts
-                name,                                     # strategy_id
-                bool(eligible),                           # rule_eligibility
-                json.dumps({
-                    "orb_high": json_safe(r["orb_high"]),
-                    "orb_low": json_safe(r["orb_low"]),
-                    "orb_breakout": int(r["orb_breakout"]),
-                    "orb_quality": int(r["orb_quality"]),
-                    "orb_location": int(r["orb_location"]),
-                    "minute_of_day": int(r["minute_of_day"]),
-
-                    "ema_21_slope": json_safe(r["ema_21_slope"]),
-                    "vwap_dist_pct": json_safe(r["vwap_dist_pct"]),
-                    "atr_expanding": int(r["atr_expanding"]),
-                    "volume_expansion": int(r["volume_expansion"]),
-                    "range_efficiency": json_safe(r["range_efficiency"])
-                }),
-
-                r["market_phase"],                        # market_phase (final regime)
-                now                                       # created_at
-            ))
-
-
+            rule_rows.append(
+                (
+                    symbol,  # symbol
+                    exchange,  # exchange
+                    timeframe,  # timeframe
+                    r["ts"],  # ts
+                    name,  # strategy_id
+                    bool(eligible),  # rule_eligibility
+                    json.dumps(
+                        {
+                            "orb_high": json_safe(r["orb_high"]),
+                            "orb_low": json_safe(r["orb_low"]),
+                            "orb_breakout": int(r["orb_breakout"]),
+                            "orb_quality": int(r["orb_quality"]),
+                            "orb_location": int(r["orb_location"]),
+                            "minute_of_day": int(r["minute_of_day"]),
+                            "ema_21_slope": json_safe(r["ema_21_slope"]),
+                            "vwap_dist_pct": json_safe(r["vwap_dist_pct"]),
+                            "atr_expanding": int(r["atr_expanding"]),
+                            "volume_expansion": int(r["volume_expansion"]),
+                            "range_efficiency": json_safe(r["range_efficiency"]),
+                        }
+                    ),
+                    r["market_phase"],  # market_phase (final regime)
+                    now,  # created_at
+                )
+            )
 
     with get_db_conn() as conn:
         with conn.cursor() as cur:
 
-            execute_values(cur, """
+            execute_values(
+                cur,
+                """
                 INSERT INTO market_context (
                     symbol, exchange, timeframe, ts,
                     market_phase,
@@ -2786,9 +2904,13 @@ def offline_label_market_context():
 
                     
                     created_at = EXCLUDED.created_at;
-            """, market_rows)
+            """,
+                market_rows,
+            )
 
-            execute_values(cur, """
+            execute_values(
+                cur,
+                """
                 INSERT INTO rule_evaluations (
                     symbol,
                     exchange,
@@ -2807,14 +2929,18 @@ def offline_label_market_context():
                     condition_snapshot = EXCLUDED.condition_snapshot,
                     market_phase       = EXCLUDED.market_phase,
                     created_at         = EXCLUDED.created_at;
-            """, rule_rows)
+            """,
+                rule_rows,
+            )
 
+    return jsonify(
+        {
+            "status": "SUCCESS",
+            "market_rows": len(market_rows),
+            "rule_rows": len(rule_rows),
+        }
+    )
 
-    return jsonify({
-        "status": "SUCCESS",
-        "market_rows": len(market_rows),
-        "rule_rows": len(rule_rows)
-    })
 
 from datetime import datetime, timedelta
 import pandas as pd
@@ -2831,72 +2957,41 @@ def calc_strategy_outcomes():
 
     data = request.get_json() or {}
 
-    symbol    = (data.get("symbol") or "").upper().strip()
+    symbol = (data.get("symbol") or "").upper().strip()
     timeframe = (data.get("timeframe") or "").lower().strip()
-    exchange  = (data.get("exchange") or "NSE").upper().strip()
+    exchange = (data.get("exchange") or "NSE").upper().strip()
 
-    to_dt   = pd.to_datetime(data.get("to_date") or datetime.utcnow(), utc=True)
-    from_dt = pd.to_datetime(data.get("from_date") or (to_dt - timedelta(days=180)), utc=True)
+    to_dt = pd.to_datetime(data.get("to_date") or datetime.utcnow(), utc=True)
+    from_dt = pd.to_datetime(
+        data.get("from_date") or (to_dt - timedelta(days=180)), utc=True
+    )
 
     if not symbol or not timeframe:
         return jsonify({"error": "symbol and timeframe required"}), 400
-
 
     # =====================================================
     # PHASE → OUTCOME MODEL (BEHAVIOURAL, DIRECTIONAL)
     # =====================================================
     PHASE_MODEL = {
-
         # ========= IMPULSE =========
-        "IMPULSE_BULL": {
-            "dir": "LONG", "tp": 1.2, "sl": 0.6, "lookahead": 4
-        },
-        "IMPULSE_BEAR": {
-            "dir": "SHORT", "tp": 1.2, "sl": 0.6, "lookahead": 4
-        },
-        "IMPULSE_NEUTRAL": {
-            "dir": "MEAN", "tp": 0.8, "sl": 0.6, "lookahead": 3
-        },
-
+        "IMPULSE_BULL": {"dir": "LONG", "tp": 1.2, "sl": 0.6, "lookahead": 4},
+        "IMPULSE_BEAR": {"dir": "SHORT", "tp": 1.2, "sl": 0.6, "lookahead": 4},
+        "IMPULSE_NEUTRAL": {"dir": "MEAN", "tp": 0.8, "sl": 0.6, "lookahead": 3},
         # ========= CONTINUATION =========
-        "EXPANSION": {
-            "dir": "FOLLOW", "tp": 1.0, "sl": 0.7, "lookahead": 6
-        },
-
+        "EXPANSION": {"dir": "FOLLOW", "tp": 1.0, "sl": 0.7, "lookahead": 6},
         # ========= POST-IMPULSE =========
-        "DIGESTION": {
-            "dir": "MEAN", "tp": 0.6, "sl": 0.6, "lookahead": 6
-        },
-        "PULLBACK_FAIL": {
-            "dir": "FADE", "tp": 0.6, "sl": 0.5, "lookahead": 5
-        },
-
+        "DIGESTION": {"dir": "MEAN", "tp": 0.6, "sl": 0.6, "lookahead": 6},
+        "PULLBACK_FAIL": {"dir": "FADE", "tp": 0.6, "sl": 0.5, "lookahead": 5},
         # ========= STRUCTURAL =========
-        "TREND_CONTINUATION": {
-            "dir": "LONG", "tp": 1.2, "sl": 0.8, "lookahead": 12
-        },
-        "TREND_ACCEPTANCE": {
-            "dir": "LONG", "tp": 1.0, "sl": 0.8, "lookahead": 14
-        },
-        "TREND_PAUSE": {
-            "dir": "LONG", "tp": 0.8, "sl": 0.7, "lookahead": 10
-        },
-
+        "TREND_CONTINUATION": {"dir": "LONG", "tp": 1.2, "sl": 0.8, "lookahead": 12},
+        "TREND_ACCEPTANCE": {"dir": "LONG", "tp": 1.0, "sl": 0.8, "lookahead": 14},
+        "TREND_PAUSE": {"dir": "LONG", "tp": 0.8, "sl": 0.7, "lookahead": 10},
         # ========= NON-TREND =========
-        "BALANCE_CHOP": {
-            "dir": "MEAN", "tp": 0.5, "sl": 0.5, "lookahead": 6
-        },
-        "COMPRESSION": {
-            "dir": "BREAKOUT", "tp": 0.7, "sl": 0.5, "lookahead": 6
-        },
-        "ABSORPTION": {
-            "dir": "FOLLOW", "tp": 0.8, "sl": 0.6, "lookahead": 8
-        },
-        "DISTRIBUTION": {
-            "dir": "SHORT", "tp": 0.8, "sl": 0.6, "lookahead": 8
-        }
+        "BALANCE_CHOP": {"dir": "MEAN", "tp": 0.5, "sl": 0.5, "lookahead": 6},
+        "COMPRESSION": {"dir": "BREAKOUT", "tp": 0.7, "sl": 0.5, "lookahead": 6},
+        "ABSORPTION": {"dir": "FOLLOW", "tp": 0.8, "sl": 0.6, "lookahead": 8},
+        "DISTRIBUTION": {"dir": "SHORT", "tp": 0.8, "sl": 0.6, "lookahead": 8},
     }
-
 
     # =====================================================
     # EXIT SIMULATION (CANDLE-TRUE, WORST CASE)
@@ -2923,7 +3018,8 @@ def calc_strategy_outcomes():
             # =====================================================
             # LOAD PRICE + MARKET CONTEXT
             # =====================================================
-            df = pd.read_sql("""
+            df = pd.read_sql(
+                """
                 SELECT
                     i.ts, i.open, i.high, i.low, i.close, i.atr_14,
                     mc.market_phase, mc.minute_of_day,
@@ -2937,7 +3033,10 @@ def calc_strategy_outcomes():
                 WHERE i.symbol=%s AND i.exchange=%s AND i.timeframe=%s
                   AND i.ts BETWEEN %s AND %s
                 ORDER BY i.ts
-            """, conn, params=[symbol, exchange, timeframe, from_dt, to_dt])
+            """,
+                conn,
+                params=[symbol, exchange, timeframe, from_dt, to_dt],
+            )
 
             if df.empty:
                 return jsonify({"error": "No data found"}), 400
@@ -2948,26 +3047,28 @@ def calc_strategy_outcomes():
             # =====================================================
             # LOAD RULE EVALUATIONS
             # =====================================================
-            rules_df = pd.read_sql("""
+            rules_df = pd.read_sql(
+                """
                 SELECT ts, strategy_id, rule_eligibility, condition_snapshot
                 FROM rule_evaluations
                 WHERE symbol=%s AND exchange=%s AND timeframe=%s
                   AND ts BETWEEN %s AND %s
-            """, conn, params=[symbol, exchange, timeframe, from_dt, to_dt])
+            """,
+                conn,
+                params=[symbol, exchange, timeframe, from_dt, to_dt],
+            )
 
             rules_df["ts"] = pd.to_datetime(rules_df["ts"], utc=True)
             rules_df["strategy_id"] = rules_df["strategy_id"].str.upper().str.strip()
 
             rule_truth = (
-                rules_df
-                .drop_duplicates(["ts", "strategy_id"], keep="last")
+                rules_df.drop_duplicates(["ts", "strategy_id"], keep="last")
                 .set_index(["ts", "strategy_id"])["rule_eligibility"]
                 .to_dict()
             )
 
             snapshots = (
-                rules_df
-                .dropna(subset=["condition_snapshot"])
+                rules_df.dropna(subset=["condition_snapshot"])
                 .drop_duplicates("ts")
                 .set_index("ts")["condition_snapshot"]
                 .apply(lambda x: x if isinstance(x, dict) else json.loads(x))
@@ -3023,43 +3124,68 @@ def calc_strategy_outcomes():
 
                 exit_speed_ratio = exit_after / cfg["lookahead"]
                 outcome_timing = (
-                    "FAST" if exit_speed_ratio <= 0.33
-                    else "NORMAL" if exit_speed_ratio <= 0.66
-                    else "LATE"
+                    "FAST"
+                    if exit_speed_ratio <= 0.33
+                    else "NORMAL" if exit_speed_ratio <= 0.66 else "LATE"
                 )
 
                 ts = row.ts
                 snap = snapshots.get(ts, {})
 
-                rows.append((
-                    symbol, exchange, timeframe, ts,
-                    row.market_phase, int(row.minute_of_day),
-
-                    rule_truth.get((ts, "ORB"), False),
-                    rule_truth.get((ts, "EMA_TREND"), False),
-                    rule_truth.get((ts, "ATR_EXPANSION"), False),
-                    rule_truth.get((ts, "VWAP_TREND"), False),
-                    rule_truth.get((ts, "VOLUME_EXPANSION"), False),
-
-                    row.ema_21_slope,
-                    row.vwap_dist_pct,
-                    atr,
-                    row.range_efficiency,
-                    int(snap.get("orb_quality", 0)),
-                    int(snap.get("orb_location", 0)),
-
-                    realized_r if rule_truth.get((ts, "ORB"), False) else None,
-                    realized_r if rule_truth.get((ts, "EMA_TREND"), False) else None,
-                    realized_r if rule_truth.get((ts, "ATR_EXPANSION"), False) else None,
-                    realized_r if rule_truth.get((ts, "VWAP_TREND"), False) else None,
-                    realized_r if rule_truth.get((ts, "VOLUME_EXPANSION"), False) else None,
-
-                    exit_reason, exit_ts,
-                    mfe, mae,
-                    cfg["lookahead"], now,
-                    mfe_r, mae_r, realized_r,
-                    exit_after, exit_speed_ratio, outcome_timing
-                ))
+                rows.append(
+                    (
+                        symbol,
+                        exchange,
+                        timeframe,
+                        ts,
+                        row.market_phase,
+                        int(row.minute_of_day),
+                        rule_truth.get((ts, "ORB"), False),
+                        rule_truth.get((ts, "EMA_TREND"), False),
+                        rule_truth.get((ts, "ATR_EXPANSION"), False),
+                        rule_truth.get((ts, "VWAP_TREND"), False),
+                        rule_truth.get((ts, "VOLUME_EXPANSION"), False),
+                        row.ema_21_slope,
+                        row.vwap_dist_pct,
+                        atr,
+                        row.range_efficiency,
+                        int(snap.get("orb_quality", 0)),
+                        int(snap.get("orb_location", 0)),
+                        realized_r if rule_truth.get((ts, "ORB"), False) else None,
+                        (
+                            realized_r
+                            if rule_truth.get((ts, "EMA_TREND"), False)
+                            else None
+                        ),
+                        (
+                            realized_r
+                            if rule_truth.get((ts, "ATR_EXPANSION"), False)
+                            else None
+                        ),
+                        (
+                            realized_r
+                            if rule_truth.get((ts, "VWAP_TREND"), False)
+                            else None
+                        ),
+                        (
+                            realized_r
+                            if rule_truth.get((ts, "VOLUME_EXPANSION"), False)
+                            else None
+                        ),
+                        exit_reason,
+                        exit_ts,
+                        mfe,
+                        mae,
+                        cfg["lookahead"],
+                        now,
+                        mfe_r,
+                        mae_r,
+                        realized_r,
+                        exit_after,
+                        exit_speed_ratio,
+                        outcome_timing,
+                    )
+                )
 
             if not rows:
                 return jsonify({"error": "No outcomes generated"}), 400
@@ -3068,7 +3194,9 @@ def calc_strategy_outcomes():
             # UPSERT (UPDATE + INSERT)
             # =====================================================
             with conn.cursor() as cur:
-                execute_values(cur, """
+                execute_values(
+                    cur,
+                    """
                     INSERT INTO strategy_outcomes (
                         symbol, exchange, timeframe, ts,
                         market_phase, minute_of_day,
@@ -3118,7 +3246,9 @@ def calc_strategy_outcomes():
                         exit_speed_ratio         = EXCLUDED.exit_speed_ratio,
                         outcome_timing           = EXCLUDED.outcome_timing,
                         created_at               = EXCLUDED.created_at
-                """, rows)
+                """,
+                    rows,
+                )
 
             conn.commit()
 
@@ -3127,9 +3257,6 @@ def calc_strategy_outcomes():
     except Exception as e:
         app.logger.exception("Strategy outcome computation failed")
         return jsonify({"error": "internal_error", "message": str(e)}), 500
-
-
-
 
 
 @app.route("/api/market-context/rule-stats", methods=["GET"])
@@ -3143,7 +3270,8 @@ def get_rule_stats():
         return jsonify({"error": "symbol and timeframe required"}), 400
 
     with get_db_conn() as conn:
-        df = pd.read_sql("""
+        df = pd.read_sql(
+            """
             SELECT
                 ts,
                 orb_outcome,
@@ -3155,16 +3283,21 @@ def get_rule_stats():
             FROM strategy_outcomes
             WHERE symbol=%s AND timeframe=%s
             ORDER BY ts
-        """, conn, params=[symbol, timeframe])
+        """,
+            conn,
+            params=[symbol, timeframe],
+        )
 
     if df.empty:
-        return jsonify({
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "test_period": None,
-            "months_tested": 0,
-            "rules": []
-        })
+        return jsonify(
+            {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "test_period": None,
+                "months_tested": 0,
+                "rules": [],
+            }
+        )
 
     # -------------------------
     # TIME METADATA
@@ -3187,7 +3320,7 @@ def get_rule_stats():
                 "success_rate": 0,
                 "failure_rate": 0,
                 "chop_rate": 0,
-                "extended_rate": 0
+                "extended_rate": 0,
             }
 
         total = len(s)
@@ -3202,36 +3335,31 @@ def get_rule_stats():
                     df.loc[s.index, "exit_reason"]
                     .isin(["TRAIL_SL_HIT", "STRUCTURE_EXIT"])
                     .sum()
-                ) / total,
-                3
-            )
+                )
+                / total,
+                3,
+            ),
         }
 
     # -------------------------
     # RESPONSE
     # -------------------------
-    return jsonify({
-        "symbol": symbol,
-        "timeframe": timeframe,
+    return jsonify(
+        {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "test_period": {"from": test_start.isoformat(), "to": test_end.isoformat()},
+            "months_tested": {"count": len(months_tested), "list": months_tested},
+            "rules": [
+                {"name": "ORB", **stats("orb_outcome")},
+                {"name": "EMA_TREND", **stats("ema_outcome")},
+                {"name": "ATR_EXPANSION", **stats("atr_outcome")},
+                {"name": "VWAP_TREND", **stats("vwap_outcome")},
+                {"name": "BB_EXPANSION", **stats("bb_outcome")},
+            ],
+        }
+    )
 
-        "test_period": {
-            "from": test_start.isoformat(),
-            "to": test_end.isoformat()
-        },
-
-        "months_tested": {
-            "count": len(months_tested),
-            "list": months_tested
-        },
-
-        "rules": [
-            {"name": "ORB", **stats("orb_outcome")},
-            {"name": "EMA_TREND", **stats("ema_outcome")},
-            {"name": "ATR_EXPANSION", **stats("atr_outcome")},
-            {"name": "VWAP_TREND", **stats("vwap_outcome")},
-            {"name": "BB_EXPANSION", **stats("bb_outcome")}
-        ]
-    })
 
 NUM_FEATURES = [
     "minute_of_day",
@@ -3266,6 +3394,7 @@ def get_engine():
         f"@{os.getenv('PGHOST')}:{os.getenv('PGPORT')}/{os.getenv('PGDATABASE')}"
     )
 
+
 @app.route("/api/train-pipeline", methods=["POST"])
 def train_pipeline():
     data = request.get_json() or {}
@@ -3281,17 +3410,25 @@ def train_pipeline():
 
     for rule_name, rule_col in RULES.items():
         results[rule_name] = {
-            "edge_gate": train_edge_gate(symbol, timeframe, rule_name, rule_col, engine),
-            "context_expectancy": train_context_expectancy(symbol, timeframe, rule_name, rule_col, engine),
-            "edge_decay": train_edge_decay(symbol, timeframe, rule_name, rule_col, engine),
+            "edge_gate": train_edge_gate(
+                symbol, timeframe, rule_name, rule_col, engine
+            ),
+            "context_expectancy": train_context_expectancy(
+                symbol, timeframe, rule_name, rule_col, engine
+            ),
+            "edge_decay": train_edge_decay(
+                symbol, timeframe, rule_name, rule_col, engine
+            ),
         }
 
-    return jsonify({
-        "status": "SUCCESS",
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "rules": results
-    })
+    return jsonify(
+        {
+            "status": "SUCCESS",
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "rules": results,
+        }
+    )
 
 
 def train_edge_gate(symbol, timeframe, rule_name, rule_col, engine):
@@ -3325,20 +3462,27 @@ def train_edge_gate(symbol, timeframe, rule_name, rule_col, engine):
     ORDER BY so.ts
     """
 
-    df = pd.read_sql(sql, engine, params={"symbol": symbol, "timeframe": timeframe}, parse_dates=["ts"])
+    df = pd.read_sql(
+        sql,
+        engine,
+        params={"symbol": symbol, "timeframe": timeframe},
+        parse_dates=["ts"],
+    )
     if len(df) < 500:
         return {"status": "FAILED", "reason": "Insufficient data"}
 
     train_df = df[df.ts < "2025-12-01"]
-    test_df  = df[df.ts >= "2025-12-01"]
+    test_df = df[df.ts >= "2025-12-01"]
 
-    X_train, y_train = train_df.drop(columns=["ts","label"]), train_df["label"]
-    X_test,  y_test  = test_df.drop(columns=["ts","label"]),  test_df["label"]
+    X_train, y_train = train_df.drop(columns=["ts", "label"]), train_df["label"]
+    X_test, y_test = test_df.drop(columns=["ts", "label"]), test_df["label"]
 
-    prep = ColumnTransformer([
-        ("num", "passthrough", NUM_FEATURES),
-        ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
-    ])
+    prep = ColumnTransformer(
+        [
+            ("num", "passthrough", NUM_FEATURES),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
+        ]
+    )
 
     model = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.04, random_state=42)
     pipe = Pipeline([("prep", prep), ("model", model)])
@@ -3352,7 +3496,9 @@ def train_edge_gate(symbol, timeframe, rule_name, rule_col, engine):
 
     # 🔽 SAVE TO DB
     with engine.begin() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text(
+                """
             INSERT INTO ml_model_runs
             (symbol, timeframe, model_type,
              trained_at, train_from, train_to, test_from, test_to,
@@ -3361,26 +3507,29 @@ def train_edge_gate(symbol, timeframe, rule_name, rule_col, engine):
             (:symbol, :tf, :model_type,
              :trained_at, :train_from, :train_to, :test_from, :test_to,
              :rows, :auc, :path)
-        """), {
-            "symbol": symbol,
-            "tf": timeframe,
-            "model_type": f"edge_gate:{rule_name}",
-            "trained_at": datetime.utcnow(),
-            "train_from": train_df.ts.min(),
-            "train_to": train_df.ts.max(),
-            "test_from": test_df.ts.min(),
-            "test_to": test_df.ts.max(),
-            "rows": len(df),
-            "auc": auc,
-            "path": path
-        })
+        """
+            ),
+            {
+                "symbol": symbol,
+                "tf": timeframe,
+                "model_type": f"edge_gate:{rule_name}",
+                "trained_at": datetime.utcnow(),
+                "train_from": train_df.ts.min(),
+                "train_to": train_df.ts.max(),
+                "test_from": test_df.ts.min(),
+                "test_to": test_df.ts.max(),
+                "rows": len(df),
+                "auc": auc,
+                "path": path,
+            },
+        )
 
     return {
         "status": "SUCCESS",
         "rule": rule_name,
         "auc": round(auc, 4),
         "recommended_threshold": 0.6,
-        "model_path": path
+        "model_path": path,
     }
 
 
@@ -3415,20 +3564,30 @@ def train_context_expectancy(symbol, timeframe, rule_name, rule_col, engine):
     ORDER BY so.ts
     """
 
-    df = pd.read_sql(sql, engine, params={"symbol": symbol, "timeframe": timeframe}, parse_dates=["ts"])
+    df = pd.read_sql(
+        sql,
+        engine,
+        params={"symbol": symbol, "timeframe": timeframe},
+        parse_dates=["ts"],
+    )
     if len(df) < 500:
         return {"status": "FAILED", "reason": "Insufficient data"}
 
     train_df = df[df.ts < "2025-12-01"]
-    test_df  = df[df.ts >= "2025-12-01"]
+    test_df = df[df.ts >= "2025-12-01"]
 
-    X_train, y_train = train_df.drop(columns=["ts","realized_r"]), train_df["realized_r"]
-    X_test,  y_test  = test_df.drop(columns=["ts","realized_r"]),  test_df["realized_r"]
+    X_train, y_train = (
+        train_df.drop(columns=["ts", "realized_r"]),
+        train_df["realized_r"],
+    )
+    X_test, y_test = test_df.drop(columns=["ts", "realized_r"]), test_df["realized_r"]
 
-    prep = ColumnTransformer([
-        ("num", "passthrough", NUM_FEATURES),
-        ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
-    ])
+    prep = ColumnTransformer(
+        [
+            ("num", "passthrough", NUM_FEATURES),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
+        ]
+    )
 
     model = lgb.LGBMRegressor(n_estimators=600, learning_rate=0.02, random_state=42)
     pipe = Pipeline([("prep", prep), ("model", model)])
@@ -3440,7 +3599,9 @@ def train_context_expectancy(symbol, timeframe, rule_name, rule_col, engine):
     joblib.dump(pipe, path)
 
     with engine.begin() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text(
+                """
             INSERT INTO ml_model_runs
             (symbol, timeframe, model_type,
              trained_at, train_from, train_to, test_from, test_to,
@@ -3449,24 +3610,23 @@ def train_context_expectancy(symbol, timeframe, rule_name, rule_col, engine):
             (:symbol, :tf, :model_type,
              :trained_at, :train_from, :train_to, :test_from, :test_to,
              :rows, :path)
-        """), {
-            "symbol": symbol,
-            "tf": timeframe,
-            "model_type": f"context_expectancy:{rule_name}",
-            "trained_at": datetime.utcnow(),
-            "train_from": train_df.ts.min(),
-            "train_to": train_df.ts.max(),
-            "test_from": test_df.ts.min(),
-            "test_to": test_df.ts.max(),
-            "rows": len(df),
-            "path": path
-        })
+        """
+            ),
+            {
+                "symbol": symbol,
+                "tf": timeframe,
+                "model_type": f"context_expectancy:{rule_name}",
+                "trained_at": datetime.utcnow(),
+                "train_from": train_df.ts.min(),
+                "train_to": train_df.ts.max(),
+                "test_from": test_df.ts.min(),
+                "test_to": test_df.ts.max(),
+                "rows": len(df),
+                "path": path,
+            },
+        )
 
-    return {
-        "status": "SUCCESS",
-        "rmse": round(rmse, 4),
-        "model_path": path
-    }
+    return {"status": "SUCCESS", "rmse": round(rmse, 4), "model_path": path}
 
 
 def train_edge_decay(symbol, timeframe, rule_name, rule_col, engine):
@@ -3503,20 +3663,33 @@ def train_edge_decay(symbol, timeframe, rule_name, rule_col, engine):
     ORDER BY so.ts
     """
 
-    df = pd.read_sql(sql, engine, params={"symbol": symbol, "timeframe": timeframe}, parse_dates=["ts"]).dropna()
+    df = pd.read_sql(
+        sql,
+        engine,
+        params={"symbol": symbol, "timeframe": timeframe},
+        parse_dates=["ts"],
+    ).dropna()
     if len(df) < 500:
         return {"status": "FAILED", "reason": "Insufficient data"}
 
     train_df = df[df.ts < "2025-12-01"]
-    test_df  = df[df.ts >= "2025-12-01"]
+    test_df = df[df.ts >= "2025-12-01"]
 
-    X_train, y_train = train_df.drop(columns=["ts","edge_velocity"]), train_df["edge_velocity"]
-    X_test,  y_test  = test_df.drop(columns=["ts","edge_velocity"]),  test_df["edge_velocity"]
+    X_train, y_train = (
+        train_df.drop(columns=["ts", "edge_velocity"]),
+        train_df["edge_velocity"],
+    )
+    X_test, y_test = (
+        test_df.drop(columns=["ts", "edge_velocity"]),
+        test_df["edge_velocity"],
+    )
 
-    prep = ColumnTransformer([
-        ("num", "passthrough", NUM_FEATURES),
-        ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
-    ])
+    prep = ColumnTransformer(
+        [
+            ("num", "passthrough", NUM_FEATURES),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_FEATURES),
+        ]
+    )
 
     model = lgb.LGBMRegressor(n_estimators=500, learning_rate=0.02, random_state=42)
     pipe = Pipeline([("prep", prep), ("model", model)])
@@ -3528,7 +3701,9 @@ def train_edge_decay(symbol, timeframe, rule_name, rule_col, engine):
     joblib.dump(pipe, path)
 
     with engine.begin() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text(
+                """
             INSERT INTO ml_model_runs
             (symbol, timeframe, model_type,
              trained_at, train_from, train_to, test_from, test_to,
@@ -3537,26 +3712,23 @@ def train_edge_decay(symbol, timeframe, rule_name, rule_col, engine):
             (:symbol, :tf, :model_type,
              :trained_at, :train_from, :train_to, :test_from, :test_to,
              :rows, :path)
-        """), {
-            "symbol": symbol,
-            "tf": timeframe,
-            "model_type": f"edge_decay:{rule_name}",
-            "trained_at": datetime.utcnow(),
-            "train_from": train_df.ts.min(),
-            "train_to": train_df.ts.max(),
-            "test_from": test_df.ts.min(),
-            "test_to": test_df.ts.max(),
-            "rows": len(df),
-            "path": path
-        })
+        """
+            ),
+            {
+                "symbol": symbol,
+                "tf": timeframe,
+                "model_type": f"edge_decay:{rule_name}",
+                "trained_at": datetime.utcnow(),
+                "train_from": train_df.ts.min(),
+                "train_to": train_df.ts.max(),
+                "test_from": test_df.ts.min(),
+                "test_to": test_df.ts.max(),
+                "rows": len(df),
+                "path": path,
+            },
+        )
 
-    return {
-        "status": "SUCCESS",
-        "rmse": round(rmse, 4),
-        "model_path": path
-    }
-
-
+    return {"status": "SUCCESS", "rmse": round(rmse, 4), "model_path": path}
 
 
 from flask import request, jsonify
@@ -3586,6 +3758,7 @@ import pickle
 ###############################################################################
 # 🔥 REDIS LIVE CANDLE STORAGE + LOADER
 ###############################################################################
+
 
 def redis_store_candle(symbol: str, timeframe: str, candle: dict, max_len: int = 600):
     """
@@ -3630,9 +3803,6 @@ def redis_load_candles(symbol: str, timeframe: str, limit: int = 500):
     return df
 
 
-
-
-    
 def redis_store_candle(symbol: str, timeframe: str, candle: dict):
     import json
     from datetime import datetime
@@ -3650,11 +3820,8 @@ def redis_store_candle(symbol: str, timeframe: str, candle: dict):
     key = f"candles:{symbol}:{timeframe}:{trade_date}"
 
     # 🔒 TIME-SERIES SAFE STORAGE
-    redis_client.zadd(
-        key,
-        {json.dumps(candle): ts}
-    )
-    
+    redis_client.zadd(key, {json.dumps(candle): ts})
+
 
 def bootstrap_indicators(symbol: str, timeframe="1m"):
     df = redis_load_candles(symbol, timeframe)
@@ -3671,8 +3838,7 @@ def bootstrap_indicators(symbol: str, timeframe="1m"):
     for i in range(len(df)):
         # Temporarily limit visible candles
         redis_client.set(
-            f"_bootstrap_limit:{symbol}:{timeframe}",
-            int(df.iloc[i]["ts"])
+            f"_bootstrap_limit:{symbol}:{timeframe}", int(df.iloc[i]["ts"])
         )
 
         compute_and_store_last_n_indicators(symbol, timeframe, n=1)
@@ -3681,8 +3847,6 @@ def bootstrap_indicators(symbol: str, timeframe="1m"):
     print("[INDICATORS] Bootstrap completed")
 
     return True
-
-    
 
 
 def redis_load_candles(symbol, timeframe="1m", limit=1200):
@@ -3723,7 +3887,6 @@ def redis_load_candles(symbol, timeframe="1m", limit=1200):
     # ==================================================
 
     return df
-
 
 
 def minute_bucket(ts_ms: int) -> int:
@@ -3901,12 +4064,6 @@ def candle_worker(symbol: str, feed_key: str):
         last_minute_bucket = current_bucket
 
 
-
-
-
-
-
-
 @app.route("/api/start-live-conversion", methods=["POST"])
 def start_live_conversion():
     payload = request.get_json(force=True) or {}
@@ -3923,32 +4080,25 @@ def start_live_conversion():
     if worker_key in live_workers:
         worker = live_workers.get(worker_key)
         if worker and worker.is_alive():
-            return jsonify({
-                "status": "ALREADY_RUNNING",
-                "symbol": symbol
-            }), 200
+            return jsonify({"status": "ALREADY_RUNNING", "symbol": symbol}), 200
         else:
             live_workers.pop(worker_key, None)
 
     print(f"[API] Starting candle engine for {symbol}")
 
     worker = threading.Thread(
-        target=candle_worker,   # ✅ SINGLE ENGINE
-        args=(symbol, feed_key),
-        daemon=True
+        target=candle_worker, args=(symbol, feed_key), daemon=True  # ✅ SINGLE ENGINE
     )
     worker.start()
 
     live_workers[worker_key] = worker
 
-    return jsonify({
-        "status": "STARTED",
-        "symbol": symbol,
-        "engine": "I1_SINGLE_ENGINE"
-    }), 200
+    return (
+        jsonify({"status": "STARTED", "symbol": symbol, "engine": "I1_SINGLE_ENGINE"}),
+        200,
+    )
 
-    
-    
+
 def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
     """
     Indicator engine (FINAL, SAFE):
@@ -3971,7 +4121,7 @@ def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
     # ---------- LOAD CANDLES ----------
     df = redis_load_candles(symbol, timeframe, limit=1200)
     if df.empty or len(df) < ML_SEQ_LEN:
-        return False   # 🔒 HARD STOP
+        return False  # 🔒 HARD STOP
 
     # ---------- TIME NORMALIZATION ----------
     df["ts"] = pd.to_datetime(df["ts"], unit="ms", utc=True).dt.tz_convert(IST)
@@ -3980,62 +4130,59 @@ def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
 
     # ---------- USE FULL HISTORY (NO SHORT DAYS) ----------
     close = df["close"].astype(float)
-    high  = df["high"].astype(float)
-    low   = df["low"].astype(float)
-    vol   = df["volume"].astype(float)
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    vol = df["volume"].astype(float)
 
     # ---------- INDICATORS ----------
     df["rsi_14"] = ta.momentum.RSIIndicator(close, 14).rsi()
 
-    df["ema_9"]   = ta.trend.EMAIndicator(close, 9).ema_indicator()
-    df["ema_21"]  = ta.trend.EMAIndicator(close, 21).ema_indicator()
-    df["ema_50"]  = ta.trend.EMAIndicator(close, 50).ema_indicator()
+    df["ema_9"] = ta.trend.EMAIndicator(close, 9).ema_indicator()
+    df["ema_21"] = ta.trend.EMAIndicator(close, 21).ema_indicator()
+    df["ema_50"] = ta.trend.EMAIndicator(close, 50).ema_indicator()
     df["ema_200"] = ta.trend.EMAIndicator(close, 200).ema_indicator()
 
     macd = ta.trend.MACD(close)
-    df["macd"]        = macd.macd()
+    df["macd"] = macd.macd()
     df["macd_signal"] = macd.macd_signal()
-    df["macd_hist"]   = macd.macd_diff()
+    df["macd_hist"] = macd.macd_diff()
 
     atr = ta.volatility.AverageTrueRange(high, low, close, 14)
     df["atr_14"] = atr.average_true_range()
-    df["atr_percent"] = (df["atr_14"] / close * 100)
-    
+    df["atr_percent"] = df["atr_14"] / close * 100
+
     # ---------- BOLLINGER (ADDED) ----------
     bb = ta.volatility.BollingerBands(close, 20, 2)
-    df["bollinger_mid"]   = bb.bollinger_mavg()
+    df["bollinger_mid"] = bb.bollinger_mavg()
     df["bollinger_upper"] = bb.bollinger_hband()
     df["bollinger_lower"] = bb.bollinger_lband()
 
-        # ---------- VWAP (DAILY RESET – FIXED) ----------
+    # ---------- VWAP (DAILY RESET – FIXED) ----------
     typical = (high + low + close) / 3
-    df["vwap"] = (
-        (typical * vol).groupby(df["date"]).cumsum()
-        /
-        vol.groupby(df["date"]).cumsum()
-    )
-    
+    df["vwap"] = (typical * vol).groupby(df["date"]).cumsum() / vol.groupby(
+        df["date"]
+    ).cumsum()
+
     # ---------- ORB (per day) ----------
     df["orb_high"] = np.nan
     df["orb_low"] = np.nan
 
     for d, day_df in df.groupby("date"):
         orb = day_df[
-            (day_df["ts"].dt.time >= time(9, 15)) &
-            (day_df["ts"].dt.time <= time(9, 20))
+            (day_df["ts"].dt.time >= time(9, 15))
+            & (day_df["ts"].dt.time <= time(9, 20))
         ]
         if orb.empty:
             continue
 
         df.loc[day_df.index, "orb_high"] = orb["high"].max()
-        df.loc[day_df.index, "orb_low"]  = orb["low"].min()
+        df.loc[day_df.index, "orb_low"] = orb["low"].min()
 
-    df["orb_breakout"]  = (df["close"] > df["orb_high"]).astype(int)
+    df["orb_breakout"] = (df["close"] > df["orb_high"]).astype(int)
     df["orb_breakdown"] = (df["close"] < df["orb_low"]).astype(int)
 
     df["is_open_candle"] = (
-        (df["ts"].dt.hour == 9) &
-        (df["ts"].dt.minute == 15)
+        (df["ts"].dt.hour == 9) & (df["ts"].dt.minute == 15)
     ).astype(int)
 
     # ---------- GAP & VOLATILITY ----------
@@ -4049,9 +4196,7 @@ def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
     # ---------- SUPERTREND SIGNAL ----------
     try:
         st = ta.trend.STCIndicator(df["close"])
-        supertrend_signal = int(
-            np.sign(st.stc().iloc[-1] - st.stc().iloc[-2])
-        )
+        supertrend_signal = int(np.sign(st.stc().iloc[-1] - st.stc().iloc[-2]))
     except Exception:
         supertrend_signal = 0
 
@@ -4063,7 +4208,6 @@ def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
         "candle_ts": candle_ts,
         "candle_time_ist": last["ts"].strftime("%Y-%m-%d %H:%M:%S"),
         "indicator_ts": candle_ts,
-
         "close": float(last["close"]),
         "rsi_14": float(last["rsi_14"]),
         "ema_9": float(last["ema_9"]),
@@ -4097,8 +4241,7 @@ def compute_and_store_last_n_indicators(symbol: str, timeframe="1m", n=1):
 
     return True
 
-    
-    
+
 import pandas as pd
 
 from datetime import datetime, timedelta, time
@@ -4108,7 +4251,8 @@ import pandas as pd
 from flask import request, jsonify
 from tensorflow.keras.models import load_model
 import joblib
-  
+
+
 @app.route("/api/symbol-feedkey", methods=["GET"])
 def api_symbol_feedkey():
     """
@@ -4144,12 +4288,12 @@ def api_symbol_feedkey():
             return jsonify({"symbol": symbol, "feed_key": entry})
 
         return jsonify({"symbol": symbol, "feed_key": None})
-    
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
-    
+
+
 @app.route("/api/paper-trade/run", methods=["POST"])
 def run_paper_trade():
     import pandas as pd
@@ -4192,28 +4336,28 @@ def run_paper_trade():
         "IMPULSE",
         "TREND_ACCEPTANCE",
         "TREND_CONTINUATION",
-        "TREND_PAUSE"
+        "TREND_PAUSE",
     }
 
     PHASE_RISK = {
         "IMPULSE": 0.015,
         "TREND_CONTINUATION": 0.012,
         "TREND_ACCEPTANCE": 0.010,
-        "TREND_PAUSE": 0.005
+        "TREND_PAUSE": 0.005,
     }
 
     PHASE_RR = {
         "IMPULSE": 4.0,
         "TREND_CONTINUATION": 3.0,
         "TREND_ACCEPTANCE": 2.5,
-        "TREND_PAUSE": 1.5
+        "TREND_PAUSE": 1.5,
     }
 
     PHASE_LOOKAHEAD = {
         "IMPULSE": 8,
         "TREND_CONTINUATION": 30,
         "TREND_ACCEPTANCE": 20,
-        "TREND_PAUSE": 10
+        "TREND_PAUSE": 10,
     }
 
     # =====================================================
@@ -4229,7 +4373,8 @@ def run_paper_trade():
     # =====================================================
     row = pd.read_sql(
         "SELECT model_path FROM ml_model_runs WHERE id=%(id)s",
-        engine, params={"id": model_run_id}
+        engine,
+        params={"id": model_run_id},
     )
 
     if row.empty:
@@ -4240,7 +4385,8 @@ def run_paper_trade():
     # =====================================================
     # LOAD DATA (ALL ML FEATURES INCLUDED)
     # =====================================================
-    df = pd.read_sql("""
+    df = pd.read_sql(
+        """
         SELECT
             r.ts,
             r.strategy_id AS rule_type,
@@ -4270,8 +4416,11 @@ def run_paper_trade():
           AND r.symbol = %(symbol)s
           AND r.timeframe = %(tf)s
         ORDER BY r.ts
-    """, engine, params={"symbol": symbol, "tf": timeframe},
-       parse_dates=["ts"])
+    """,
+        engine,
+        params={"symbol": symbol, "tf": timeframe},
+        parse_dates=["ts"],
+    )
 
     if df.empty:
         return jsonify({"error": "No eligible trades found"}), 400
@@ -4333,7 +4482,7 @@ def run_paper_trade():
         sl = entry - sl_dist
         tp = entry + rr_ratio * sl_dist
 
-        future = df.iloc[i+1:i+1+lookahead]
+        future = df.iloc[i + 1 : i + 1 + lookahead]
         future = future[future["ts"].dt.date == trade_date]
 
         exit_price = entry
@@ -4361,26 +4510,28 @@ def run_paper_trade():
 
         daily_trades[trade_date] += 1
 
-        trades.append({
-            "paper_trade_run_id": None,
-            "model_run_id": model_run_id,
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "trade_ts": row["ts"],
-            "trade_date": trade_date,
-            "rule_type": row["rule_type"],
-            "market_phase": phase,
-            "probability": float(row["prob"]),
-            "threshold": threshold,
-            "result": result,
-            "entry_price": entry,
-            "exit_price": exit_price,
-            "qty": qty,
-            "margin_used": qty * margin_per_share,
-            "pnl": pnl,
-            "exit_reason": exit_reason,
-            "capital_after": capital
-        })
+        trades.append(
+            {
+                "paper_trade_run_id": None,
+                "model_run_id": model_run_id,
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "trade_ts": row["ts"],
+                "trade_date": trade_date,
+                "rule_type": row["rule_type"],
+                "market_phase": phase,
+                "probability": float(row["prob"]),
+                "threshold": threshold,
+                "result": result,
+                "entry_price": entry,
+                "exit_price": exit_price,
+                "qty": qty,
+                "margin_used": qty * margin_per_share,
+                "pnl": pnl,
+                "exit_reason": exit_reason,
+                "capital_after": capital,
+            }
+        )
 
     # =====================================================
     # METRICS
@@ -4393,7 +4544,9 @@ def run_paper_trade():
     # STORE RUN
     # =====================================================
     with engine.begin() as conn:
-        run_id = conn.execute(text("""
+        run_id = conn.execute(
+            text(
+                """
             INSERT INTO paper_trade_runs (
                 model_run_id, symbol, timeframe,
                 threshold, starting_capital, final_capital,
@@ -4407,37 +4560,42 @@ def run_paper_trade():
                 :wr, :exp, :dd
             )
             RETURNING id
-        """), {
-            "mr": model_run_id,
-            "sym": symbol,
-            "tf": timeframe,
-            "th": threshold,
-            "start": starting_capital,
-            "final": capital,
-            "tt": total_trades,
-            "w": wins,
-            "l": losses,
-            "wr": win_rate,
-            "exp": expectancy,
-            "dd": max_dd * 100
-        }).scalar()
+        """
+            ),
+            {
+                "mr": model_run_id,
+                "sym": symbol,
+                "tf": timeframe,
+                "th": threshold,
+                "start": starting_capital,
+                "final": capital,
+                "tt": total_trades,
+                "w": wins,
+                "l": losses,
+                "wr": win_rate,
+                "exp": expectancy,
+                "dd": max_dd * 100,
+            },
+        ).scalar()
 
     if trades:
         for t in trades:
             t["paper_trade_run_id"] = run_id
-        pd.DataFrame(trades).to_sql("paper_trades", engine, if_exists="append", index=False)
+        pd.DataFrame(trades).to_sql(
+            "paper_trades", engine, if_exists="append", index=False
+        )
 
-    return jsonify({
-        "status": "SUCCESS",
-        "paper_trade_run_id": run_id,
-        "final_capital": round(capital, 2),
-        "net_pnl": round(capital - starting_capital, 2),
-        "total_trades": total_trades,
-        "win_rate": round(win_rate, 4),
-        "max_drawdown_pct": round(max_dd * 100, 2)
-    })
-
-
+    return jsonify(
+        {
+            "status": "SUCCESS",
+            "paper_trade_run_id": run_id,
+            "final_capital": round(capital, 2),
+            "net_pnl": round(capital - starting_capital, 2),
+            "total_trades": total_trades,
+            "win_rate": round(win_rate, 4),
+            "max_drawdown_pct": round(max_dd * 100, 2),
+        }
+    )
 
 
 @app.route("/api/paper-trade/equity-curve", methods=["GET"])
@@ -4456,19 +4614,20 @@ def paper_equity_curve():
         f"@{os.getenv('PGHOST')}:{os.getenv('PGPORT')}/{os.getenv('PGDATABASE')}"
     )
 
-    df = pd.read_sql("""
+    df = pd.read_sql(
+        """
         SELECT
             trade_ts AS time,
             capital_after AS capital
         FROM paper_trades
         WHERE paper_trade_run_id = %(id)s
         ORDER BY trade_ts
-    """, engine, params={"id": run_id})
+    """,
+        engine,
+        params={"id": run_id},
+    )
 
-    return jsonify({
-        "run_id": run_id,
-        "curve": df.to_dict(orient="records")
-    })
+    return jsonify({"run_id": run_id, "curve": df.to_dict(orient="records")})
 
 
 @app.route("/api/paper-trade/compare-thresholds", methods=["POST"])
@@ -4482,16 +4641,12 @@ def compare_thresholds():
         results[str(t)] = resp
 
     results[str(t)] = {
-    "final_capital": resp["final_capital"],
-    "net_pnl": resp["net_pnl"],
-    "total_trades": resp["total_trades"],
-    "win_rate": resp["win_rate"],
-    "max_drawdown": resp["max_drawdown"]
-}
-
-
-
-
+        "final_capital": resp["final_capital"],
+        "net_pnl": resp["net_pnl"],
+        "total_trades": resp["total_trades"],
+        "win_rate": resp["win_rate"],
+        "max_drawdown": resp["max_drawdown"],
+    }
 
 
 # ===========================================
@@ -4520,9 +4675,7 @@ def load_symbol_map():
             try:
                 # Symbol
                 symbol = (
-                    i.get("symbol")
-                    or i.get("trading_symbol")
-                    or i.get("tradingsymbol")
+                    i.get("symbol") or i.get("trading_symbol") or i.get("tradingsymbol")
                 )
                 if not symbol:
                     continue
@@ -4530,9 +4683,7 @@ def load_symbol_map():
 
                 # Keys / ISIN
                 raw_key = (
-                    i.get("instrument_key")
-                    or i.get("instrumentKey")
-                    or i.get("token")
+                    i.get("instrument_key") or i.get("instrumentKey") or i.get("token")
                 )
                 isin = (i.get("isin") or "").upper().strip()
 
@@ -4576,8 +4727,10 @@ def load_symbol_map():
         print("❌ Failed parsing instruments file:", e)
         SYMBOL_TO_KEY = {}
 
+
 # 👉 MUST be here (not inside the function)
 load_symbol_map()
+
 
 def run_instrument_startup_sync():
     print("🔁 [BOOT] Starting instrument sync")
@@ -4616,8 +4769,6 @@ def startup_sync_once():
         print("❌ [BOOT] Instrument sync failed:", e)
 
 
-
-
 if __name__ == "__main__":
     init_db()
 
@@ -4629,6 +4780,3 @@ if __name__ == "__main__":
         app.logger.error(f"❌ INDIA VIX update failed: {e}")
 
     startup_sync_once()
-
-    
-
