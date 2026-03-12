@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-    darkMode: "class",   // ⬅ REQUIRED for theme switching!
+    darkMode: "class",
     content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
 
     theme: {
@@ -14,6 +14,9 @@ export default {
             },
             boxShadow: {
                 glow: "0 0 15px rgba(59, 130, 246, 0.3)",
+            },
+            fontFamily: {
+                sans: ["Inter", "sans-serif"],
             },
         },
     },

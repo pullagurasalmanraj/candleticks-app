@@ -1,103 +1,194 @@
-import React, { useEffect } from "react";
-import { motion } from "framer-motion";
-import { LogIn } from "lucide-react";
-import bgVideo from "../assets/login-animation.mp4";
+import React, { useState } from "react";
+import { LogIn, UserPlus } from "lucide-react";
+import CandleBackground from "../components/CandleBackground";
+import Navbar from "../components/Navbar";
 
-export default function Login() {
+export default function AuthPage() {
 
-    useEffect(() => {
-        document.title = "Login | Candlesticks Dashboard";
-    }, []);
+    const [tab, setTab] = useState("login");
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
 
-    const handleLogin = () => {
-        window.location.href = "http://localhost/auth/login";
+    const handleLogin = async () => {
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert(data.error);
+            return;
+        }
+
+        window.location.href = "/trading-login";
+    };
+
+    const handleSignup = async () => {
+        const res = await fetch("/api/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert(data.error);
+            return;
+        }
+
+        alert("Account created successfully");
+        setTab("login");
+    };
+
+    const loginGoogle = () => {
+        window.location.href = "/auth/google";
     };
 
     return (
-        <div className="relative w-full h-screen overflow-hidden">
 
-            {/* Background Video Wrapper */}
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-black">
-                <motion.video
-                    key="background"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1.2 }}
-                    className="
-            max-w-none
-            min-w-full
-            min-h-full
-            object-cover
-            md:h-full md:w-auto
-          "
-                >
-                    <source src={bgVideo} type="video/mp4" />
-                </motion.video>
-            </div>
 
-            {/* Cinematic Overlay */}
-            <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/30 to-transparent"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1.4 }}
-            />
+        <div className="relative w-full min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700">
 
-            {/* Soft Gloss Effect */}
-            <motion.div
-                className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-white/10 to-transparent"
-                animate={{ opacity: [0.15, 0.35, 0.15] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            />
+            <CandleBackground />
 
-            {/* Page Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center h-full px-6 text-center">
 
-                {/* Title */}
-                <motion.h1
-                    initial={{ y: 35, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 1 }}
-                    className="text-white text-5xl sm:text-6xl font-extrabold tracking-tight drop-shadow-xl"
-                >
-                    TradingDesk
-                </motion.h1>
+            <Navbar />
 
-                {/* Subtitle */}
-                <motion.p
-                    className="text-gray-300 mt-3 text-sm sm:text-base"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ repeat: Infinity, duration: 2.2 }}
-                >
-                    Powered by Upstox API
-                </motion.p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-64px)]">
 
-                {/* Login Button */}
-                <motion.button
-                    onClick={handleLogin}
-                    whileHover={{ scale: 1.08, boxShadow: "0px 0px 22px rgba(0,150,255,0.7)" }}
-                    whileTap={{ scale: 0.92 }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7, duration: 0.6 }}
-                    className="mt-10 px-10 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base shadow-xl flex items-center gap-3"
-                >
-                    <LogIn size={22} /> Login with Upstox
-                </motion.button>
 
-                {/* Footer Info */}
-                <motion.p
-                    className="mt-10 text-gray-400 text-xs sm:text-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.3 }}
-                >
-                    🔐 Secure OAuth • No Credentials Stored • Encrypted Sign-in
-                </motion.p>
+
+
+                {/* LEFT HERO SECTION */}
+
+                <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+
+                    <h1 className="text-5xl font-bold">
+                        Candlesticks
+                    </h1>
+
+                    <p className="mt-6 text-lg text-indigo-100 max-w-md">
+                        Professional trading analytics platform powered by
+                        real-time market data, algorithmic indicators,
+                        and AI driven insights.
+                    </p>
+
+                    <div className="mt-10 space-y-4 text-indigo-100">
+
+                        <p>📊 Real-time market ticks</p>
+                        <p>📈 Advanced indicator engine</p>
+                        <p>⚡ Strategy backtesting</p>
+                        <p>🤖 AI powered predictions</p>
+
+                    </div>
+
+                </div>
+
+                {/* RIGHT LOGIN PANEL */}
+
+                <div className="relative z-10 flex items-center justify-center px-6">
+
+                    <div className="w-full max-w-md bg-indigo-500/20 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-8">
+
+                        <h2 className="text-2xl font-bold text-center text-white">
+                        </h2>
+
+                        {/* Tabs */}
+
+                        <div className="flex bg-indigo-500/20 rounded-lg p-1 mt-6">
+                            <button
+                                onClick={() => setTab("login")}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition ${tab === "login"
+                                    ? "bg-white shadow text-indigo-700"
+                                    : "text-indigo-200 hover:text-white"
+                                    }`}
+                            >
+                                Login
+                            </button>
+
+                            <button
+                                onClick={() => setTab("signup")}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition ${tab === "signup"
+                                    ? "bg-white shadow text-indigo-700"
+                                    : "text-indigo-200 hover:text-white"
+                                    }`}
+                            >
+                                Signup
+                            </button>
+
+
+                        </div>
+
+                        {/* FORM */}
+
+                        <div className="mt-6 space-y-4">
+
+                            <input
+                                type="text"
+                                placeholder="Username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-indigo-500/20 border border-white/30 text-white placeholder-indigo-200 rounded-lg px-4 py-2 outline-none transition-all duration-200 hover:bg-indigo-500/30 focus:bg-indigo-500/30 focus:ring-2 focus:ring-white/40"
+                            />
+
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-indigo-500/20 border border-white/30 text-white placeholder-indigo-200 rounded-lg px-4 py-2 outline-none transition-all duration-200 hover:bg-indigo-500/30 focus:bg-indigo-500/30 focus:ring-2 focus:ring-white/40"
+                            />
+
+                            {tab === "login" && (
+                                <button
+                                    onClick={handleLogin}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
+                                >
+                                    <LogIn size={18} />
+                                    Login
+                                </button>
+                            )}
+
+                            {tab === "signup" && (
+                                <button
+                                    onClick={handleSignup}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
+                                >
+                                    <UserPlus size={18} />
+                                    Create Account
+                                </button>
+                            )}
+
+                            {/* Divider */}
+
+                            <div className="flex items-center gap-3 my-4">
+                                <div className="flex-1 h-px bg-gray-200"></div>
+                                <span className="text-xs text-gray-400">OR</span>
+                                <div className="flex-1 h-px bg-gray-200"></div>
+                            </div>
+
+                            {/* Google */}
+
+                            <button
+                                onClick={loginGoogle}
+                                className="w-full border border-white/30 hover:bg-indigo-500/30 py-2 rounded-lg flex items-center justify-center gap-3 text-white transition"
+                            >
+                                <img
+                                    src="https://www.svgrepo.com/show/475656/google-color.svg"
+                                    className="w-5 h-5"
+                                />
+                                Continue with Google
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
         </div>

@@ -27,6 +27,8 @@ import requests
 import redis
 import websockets
 
+CURRENT_SUBS = set()
+
 # Optional generated protobuf (MarketDataFeedV3_pb2.py)
 try:
     import MarketDataFeedV3_pb2 as pb
@@ -62,9 +64,11 @@ CURRENT_SUBS = set()
 SUBSCRIBE_QUEUE = asyncio.Queue()
 ASYNC_LOOP: asyncio.AbstractEventLoop | None = None
 
+
 # -------------------- Helpers --------------------
 def log(*args, **kwargs):
     print(*args, **kwargs, flush=True)
+
 
 def get_access_token_from_redis():
     try:
@@ -79,6 +83,7 @@ def get_access_token_from_redis():
     except Exception:
         return None
 
+
 def build_subscribe_payload(instrument_keys, mode="full", guid=None):
     if guid is None:
         guid = str(int(time.time() * 1000))
@@ -86,11 +91,9 @@ def build_subscribe_payload(instrument_keys, mode="full", guid=None):
     return {
         "guid": guid,
         "method": "sub",
-        "data": {
-            "mode": mode,
-            "instrumentKeys": instrument_keys
-        }
+        "data": {"mode": mode, "instrumentKeys": instrument_keys},
     }
+
 
 def try_decode_tick(raw_bytes: bytes) -> str:
     if pb is not None:
@@ -102,7 +105,12 @@ def try_decode_tick(raw_bytes: bytes) -> str:
                     d = MessageToDict(feed, preserving_proto_field_name=True)
                     return json.dumps({"proto_parsed": True, "data": d})
                 except Exception:
-                    return json.dumps({"proto_parsed": True, "raw_base64": base64.b64encode(raw_bytes).decode()})
+                    return json.dumps(
+                        {
+                            "proto_parsed": True,
+                            "raw_base64": base64.b64encode(raw_bytes).decode(),
+                        }
+                    )
         except Exception:
             pass
 
@@ -114,7 +122,10 @@ def try_decode_tick(raw_bytes: bytes) -> str:
         except:
             return json.dumps({"proto_parsed": False, "raw_text": txt})
     except:
-        return json.dumps({"proto_parsed": False, "raw_base64": base64.b64encode(raw_bytes).decode()})
+        return json.dumps(
+            {"proto_parsed": False, "raw_base64": base64.b64encode(raw_bytes).decode()}
+        )
+
 
 async def broadcast_to_clients(payload_str: str):
     dead = []
@@ -132,19 +143,32 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
     global ACCESS_TOKEN
 
     if not ACCESS_TOKEN:
-        ACCESS_TOKEN = os.getenv("UPSTOX_ACCESS_TOKEN", "") or get_access_token_from_redis() or ACCESS_TOKEN
+        ACCESS_TOKEN = (
+            os.getenv("UPSTOX_ACCESS_TOKEN", "")
+            or get_access_token_from_redis()
+            or ACCESS_TOKEN
+        )
 
     if not ACCESS_TOKEN:
-        log("🔴 No Upstox access token (UPSTOX_ACCESS_TOKEN). Upstox connection disabled.")
+        log(
+            "🔴 No Upstox access token (UPSTOX_ACCESS_TOKEN). Upstox connection disabled."
+        )
         while True:
             await asyncio.sleep(10)
-            ACCESS_TOKEN = os.getenv("UPSTOX_ACCESS_TOKEN", "") or get_access_token_from_redis() or ACCESS_TOKEN
+            ACCESS_TOKEN = (
+                os.getenv("UPSTOX_ACCESS_TOKEN", "")
+                or get_access_token_from_redis()
+                or ACCESS_TOKEN
+            )
             if ACCESS_TOKEN:
                 log("🟢 Found UPSTOX_ACCESS_TOKEN; continuing to connect.")
                 break
 
     def authorize_call():
-        headers = {"Accept": "application/json", "Authorization": f"Bearer {ACCESS_TOKEN}"}
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {ACCESS_TOKEN}",
+        }
         url = "https://api.upstox.com/v3/feed/market-data-feed/authorize"
         r = requests.get(url, headers=headers, timeout=15)
         r.raise_for_status()
@@ -159,9 +183,12 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
             if isinstance(j, dict):
                 data = j.get("data") or j
                 if isinstance(data, dict):
-                    uri = data.get("authorized_redirect_uri") or data.get("authorizedRedirectUri")
+                    uri = data.get("authorized_redirect_uri") or data.get(
+                        "authorizedRedirectUri"
+                    )
 
                 if not uri:
+
                     def find_wss(obj):
                         if isinstance(obj, str) and obj.startswith("wss://"):
                             return obj
@@ -175,6 +202,7 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
                                 r = find_wss(v)
                                 if r:
                                     return r
+
                     uri = find_wss(j)
 
             if not uri:
@@ -195,12 +223,16 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
                     try:
                         async for message in ws:
                             if isinstance(message, str):
-                                payload = json.dumps({"proto_parsed": False, "raw_text": message})
+                                payload = json.dumps(
+                                    {"proto_parsed": False, "raw_text": message}
+                                )
                             else:
                                 payload = try_decode_tick(message)
 
                             # --------- Redis Publish ---------
-                            redis_client.publish(REDIS_TICKS_CHANNEL, payload.encode("utf-8"))
+                            redis_client.publish(
+                                REDIS_TICKS_CHANNEL, payload.encode("utf-8")
+                            )
 
                             # =====================================================
                             # 🗂 DAILY TICK STORAGE (Your requested feature)
@@ -211,8 +243,10 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
                                 if feeds:
                                     today = time.strftime("%Y-%m-%d")
                                     for ik, feed in feeds.items():
-                                        redis_key = f"ticks:{today}:{ik}"   # folder-like
-                                        redis_client.lpush(redis_key, payload.encode("utf-8"))
+                                        redis_key = f"ticks:{today}:{ik}"  # folder-like
+                                        redis_client.lpush(
+                                            redis_key, payload.encode("utf-8")
+                                        )
                             except Exception:
                                 traceback.print_exc()
                             # =====================================================
@@ -255,16 +289,24 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
                             continue
 
                         # Build payload (default method = "sub")
-                        payload = build_subscribe_payload(keys, mode=item.get("mode", "full"), guid=item.get("guid"))
+                        payload = build_subscribe_payload(
+                            keys, mode=item.get("mode", "full"), guid=item.get("guid")
+                        )
                         # If caller requested unsubscribe, override method
-                        if item.get("method") == "unsub" or item.get("action") == "unsub" or item.get("action") == "unsubscribe":
+                        if (
+                            item.get("method") == "unsub"
+                            or item.get("action") == "unsub"
+                            or item.get("action") == "unsubscribe"
+                        ):
                             payload["method"] = "unsub"
 
                         txt = json.dumps(payload).encode("utf-8")
 
                         try:
                             await ws.send(txt)
-                            log(f"📨 Sent subscribe/unsubscribe to Upstox: method={payload.get('method')} keys={keys}")
+                            log(
+                                f"📨 Sent subscribe/unsubscribe to Upstox: method={payload.get('method')} keys={keys}"
+                            )
                         except:
                             # re-queue on failure (keep behavior unchanged)
                             await subscription_queue.put(item)
@@ -286,6 +328,7 @@ async def upstox_wss_worker(loop, subscription_queue: asyncio.Queue):
             log("⏳ Reconnecting in 5s...")
             await asyncio.sleep(5)
 
+
 # -------------------- Redis listeners --------------------
 def redis_subscribe_request_thread(loop, subscription_queue):
     log("📡 Listening for subscribe:requests...")
@@ -305,7 +348,11 @@ def redis_subscribe_request_thread(loop, subscription_queue):
 
             # Support both subscribe and unsubscribe actions from Redis
             action = (payload.get("action") or "").lower()
-            ik = payload.get("instrument_key") or payload.get("instrumentKey") or payload.get("symbol")
+            ik = (
+                payload.get("instrument_key")
+                or payload.get("instrumentKey")
+                or payload.get("symbol")
+            )
             if not ik:
                 continue
 
@@ -317,15 +364,28 @@ def redis_subscribe_request_thread(loop, subscription_queue):
                     pass
                 send_item = {"instrumentKeys": [ik], "method": "unsub"}
                 # schedule onto asyncio queue from this thread
-                loop.call_soon_threadsafe(asyncio.create_task, subscription_queue.put(send_item))
+                loop.call_soon_threadsafe(
+                    asyncio.create_task, subscription_queue.put(send_item)
+                )
             else:
                 # default: subscribe
+
+                if ik in CURRENT_SUBS:
+                    log("⚠ Already subscribed:", ik)
+                    continue
+
                 log("📨 Subscribe request:", ik)
+
                 CURRENT_SUBS.add(ik)
+
                 send_item = {"instrumentKeys": [ik], "method": "sub"}
-                loop.call_soon_threadsafe(asyncio.create_task, subscription_queue.put(send_item))
+
+                loop.call_soon_threadsafe(
+                    asyncio.create_task, subscription_queue.put(send_item)
+                )
         except:
             traceback.print_exc()
+
 
 def redis_unsubscribe_request_thread(loop, subscription_queue):
     log("📡 Listening for unsubscribe:requests...")
@@ -347,19 +407,22 @@ def redis_unsubscribe_request_thread(loop, subscription_queue):
             if not ik:
                 continue
 
+            if ik not in CURRENT_SUBS:
+                log("⚠ Not subscribed:", ik)
+                continue
+
             log("❌ Unsubscribe request:", ik)
 
-            try:
-                CURRENT_SUBS.discard(ik)
-            except:
-                pass
+            CURRENT_SUBS.discard(ik)
 
             send_item = {"instrumentKeys": [ik], "method": "unsub"}
-            loop.call_soon_threadsafe(asyncio.create_task, subscription_queue.put(send_item))
+            loop.call_soon_threadsafe(
+                asyncio.create_task, subscription_queue.put(send_item)
+            )
 
         except:
             traceback.print_exc()
-            
+
 
 def redis_ticks_listener_thread(loop):
     log("📢 Redis tick listener starting...")
@@ -376,9 +439,12 @@ def redis_ticks_listener_thread(loop):
             if not raw:
                 continue
             payload = raw.decode("utf-8")
-            loop.call_soon_threadsafe(asyncio.create_task, broadcast_to_clients(payload))
+            loop.call_soon_threadsafe(
+                asyncio.create_task, broadcast_to_clients(payload)
+            )
         except:
             traceback.print_exc()
+
 
 # -------------------- Local WebSocket server --------------------
 async def ws_client_handler(websocket):
@@ -434,7 +500,10 @@ async def ws_client_handler(websocket):
                                     CURRENT_SUBS.discard(k)
                                 except:
                                     pass
-                            send_item = {"instrumentKeys": list(keys), "method": "unsub"}
+                            send_item = {
+                                "instrumentKeys": list(keys),
+                                "method": "unsub",
+                            }
                             asyncio.create_task(SUBSCRIBE_QUEUE.put(send_item))
                             log("❌ Received WS unsubscribe from client:", keys)
 
@@ -469,11 +538,19 @@ async def ws_client_handler(websocket):
 
 # -------------------- Main --------------------
 def start_redis_threads(loop, subscription_queue):
-    t1 = threading.Thread(target=redis_subscribe_request_thread, args=(loop, subscription_queue), daemon=True)
+    t1 = threading.Thread(
+        target=redis_subscribe_request_thread,
+        args=(loop, subscription_queue),
+        daemon=True,
+    )
     t1.start()
 
     # 🔥 NEW: Unsubscribe listener thread
-    t_unsub = threading.Thread(target=redis_unsubscribe_request_thread, args=(loop, subscription_queue), daemon=True)
+    t_unsub = threading.Thread(
+        target=redis_unsubscribe_request_thread,
+        args=(loop, subscription_queue),
+        daemon=True,
+    )
     t_unsub.start()
 
     t2 = threading.Thread(target=redis_ticks_listener_thread, args=(loop,), daemon=True)
@@ -496,12 +573,18 @@ async def main_async():
 
     await asyncio.Future()
 
+
 def main():
     global ACCESS_TOKEN
     if not ACCESS_TOKEN:
-        ACCESS_TOKEN = os.getenv("UPSTOX_ACCESS_TOKEN", "") or get_access_token_from_redis() or ACCESS_TOKEN
+        ACCESS_TOKEN = (
+            os.getenv("UPSTOX_ACCESS_TOKEN", "")
+            or get_access_token_from_redis()
+            or ACCESS_TOKEN
+        )
 
     asyncio.run(main_async())
+
 
 if __name__ == "__main__":
     main()

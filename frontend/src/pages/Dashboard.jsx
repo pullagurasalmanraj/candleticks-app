@@ -20,6 +20,23 @@ import MarketSummary from "../components/MarketSummary";
 import IndexStrip from "../components/IndexStrip";
 import SelectedInstruments from "../components/SelectedInstruments";
 import ToolsPanel from "../components/ToolsPanel";
+import useInstrumentSearch from "../hooks/useInstrumentSearch";
+import useWebSocketPrices from "../hooks/useWebSocketPrices";
+import { fetchTimeframes } from "../services/timeframeService";
+import {
+    fetchHistoricalCandlesAPI,
+    storeCandlesAPI
+} from "../services/candleService";
+import {
+    subscribeSymbol,
+    unsubscribeInstrument
+} from "../services/subscriptionService";
+
+import { generateIndicators } from "../services/indicatorService";
+import { generateMonthlyRanges } from "../utils/dateUtils";
+import { downloadExcelAPI } from "../services/exportService";
+
+
 
 
 
@@ -27,24 +44,18 @@ import ToolsPanel from "../components/ToolsPanel";
 export default function Dashboard() {
     const { theme } = useTheme();
     const isLight = theme === "light";
-    const searchCacheRef = useRef({}); // ✅ ADD THIS
+
 
 
     // ---------- State ----------
-    const [instruments, setInstruments] = useState([]);
-    const [prices, setPrices] = useState({});
-    const [lastPrices, setLastPrices] = useState({});
+    const [selectedInstruments, setSelectedInstruments] = useState([]);
+
     const [isApplyingIndicators, setIsApplyingIndicators] = useState(false);
-
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [showResults, setShowResults] = useState(false);
-
     const [watchlist, setWatchlist] = useState([]);
     const [selectedSymbol, setSelectedSymbol] = useState("");
     const [selectedInstrument, setSelectedInstrument] = useState(null);
 
-    const [selectedInstruments, setSelectedInstruments] = useState([]);
+
     const [activeSubscriptions, setActiveSubscriptions] = useState({});
 
     const [startDate, setStartDate] = useState(null);
@@ -60,65 +71,26 @@ export default function Dashboard() {
     const [isFetchingHistory, setIsFetchingHistory] = useState(false);
 
 
-    const [isConnected, setIsConnected] = useState(false);
+
     const [indexData, setIndexData] = useState({});
     const [marketSummary, setMarketSummary] = useState(null);
     const [asOf, setAsOf] = useState(null);
     const [toast, setToast] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    const wsRef = useRef(null);
-    // Manual WebSocket Control Mode
-    const [manualWS, setManualWS] = useState(false);
-
-    const connectWebSocket = () => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            return setToast("Already connected.");
-        }
-
-        setManualWS(true);
-        const ws = new WebSocket("ws://localhost:9000");
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-            setIsConnected(true);
-            setToast("🟢 WebSocket Connected");
-        };
-
-        ws.onclose = () => {
-            setIsConnected(false);
-            if (manualWS) {
-                setTimeout(connectWebSocket, 2000);
-            }
-        };
-
-        ws.onerror = () => {
-            setToast("⚠ WebSocket Error");
-            ws.close();
-        };
-    };
-
-    const disconnectWebSocket = () => {
-        setManualWS(false);
-        if (wsRef.current) {
-            wsRef.current.close();
-            setIsConnected(false);
-            setToast("🔴 WebSocket Disconnected");
-        }
-    };
 
 
-    // 🔁 Restore last prices immediately on refresh
-    useEffect(() => {
-        const cached = localStorage.getItem("lastPrices");
-        if (cached) {
-            try {
-                const parsed = JSON.parse(cached);
-                setPrices(parsed);
-                setLastPrices(parsed);
-            } catch { }
-        }
-    }, []);
+    const {
+        search,
+        setSearch,
+        debouncedSearch,
+        instruments,
+        showResults,
+        setShowResults
+    } = useInstrumentSearch();
+
+
+
+
+
 
 
 
@@ -186,13 +158,14 @@ export default function Dashboard() {
         return map;
     }, [instruments]);
 
+    const {
+        prices,
+        isConnected,
+        isLoading
+    } = useWebSocketPrices(instrumentByKey)
 
 
 
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search.trim()), 150);
-        return () => clearTimeout(t);
-    }, [search]);
 
     useEffect(() => {
         try {
@@ -225,59 +198,35 @@ export default function Dashboard() {
     }, [watchlist]);
 
 
-    useEffect(() => {
-        // 🔒 minimum 2 chars – prevents useless DB calls
-        if (debouncedSearch.length < 2) {
-            setInstruments([]);
-            return;
-        }
-
-        // ⚡ instant result from cache
-        if (searchCacheRef.current[debouncedSearch]) {
-            setInstruments(searchCacheRef.current[debouncedSearch]);
-            return;
-        }
-
-        const controller = new AbortController();
-
-        fetch(
-            `/api/instruments?q=${encodeURIComponent(debouncedSearch)}`,
-            { signal: controller.signal }
-        )
-            .then((r) => r.json())
-            .then((d) => {
-                const results = Array.isArray(d.instruments) ? d.instruments : [];
-
-                // 🧠 cache results
-                searchCacheRef.current[debouncedSearch] = results;
-
-                setInstruments(results);
-            })
-            .catch((err) => {
-                if (err.name !== "AbortError") {
-                    setInstruments([]);
-                }
-            });
-
-        return () => controller.abort();
-    }, [debouncedSearch]);
 
 
     useEffect(() => {
+
         let mounted = true;
-        fetch("/api/timeframes")
-            .then((r) => r.json())
-            .then((d) => {
-                if (!mounted) return;
-                setTimeframes(Array.isArray(d.timeframes) ? d.timeframes : []);
-            })
-            .catch((e) => {
-                console.error("Failed to load timeframes:", e);
-                if (mounted) setTimeframes([]);
-            });
+
+        async function loadTimeframes() {
+            try {
+                const data = await fetchTimeframes();
+
+                if (mounted) {
+                    setTimeframes(data);
+                }
+
+            } catch (err) {
+                console.error("Failed to load timeframes:", err);
+
+                if (mounted) {
+                    setTimeframes([]);
+                }
+            }
+        }
+
+        loadTimeframes();
+
         return () => {
             mounted = false;
         };
+
     }, []);
 
     const subscribeToStock = async (inst) => {
@@ -290,28 +239,16 @@ export default function Dashboard() {
 
         try {
             if (!isActive) {
-                await fetch(
-                    `/api/ws-subscribe?symbol=${encodeURIComponent(sym)}`
-                );
+                await subscribeSymbol(sym);
 
-                wsRef.current?.send(
-                    JSON.stringify({ subscribe: [key], source: "user" })
-                );
 
                 setActiveSubscriptions((prev) => ({ ...prev, [key]: true }));
                 setSelectedSymbol(sym);
                 setSelectedInstrument(inst);
                 setToast(`Subscribed: ${sym}`);
             } else {
-                await fetch(`/api/unsubscribe`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ instrument_key: key }),
-                });
+                await unsubscribeInstrument(key);
 
-                wsRef.current?.send(
-                    JSON.stringify({ unsubscribe: [key], source: "user" })
-                );
 
                 setActiveSubscriptions((prev) => {
                     const u = { ...prev };
@@ -326,114 +263,6 @@ export default function Dashboard() {
         }
     };
 
-    // WebSocket hook — CONNECT ONCE (PRICE SOURCE OF TRUTH)
-    useEffect(() => {
-        let closed = false;
-
-        const savedSubs = JSON.parse(
-            localStorage.getItem("activeSubscriptions") || "{}"
-        );
-
-        const connect = () => {
-            const ws = new WebSocket("ws://localhost:9000");
-            wsRef.current = ws;
-
-            ws.onopen = () => {
-                console.log("🟢 WS connected");
-                setIsConnected(true);
-                setIsLoading(false);
-
-                const keys = Object.keys(savedSubs);
-                if (keys.length > 0) {
-                    ws.send(JSON.stringify({ subscribe: keys, source: "restore" }));
-                }
-            };
-
-            ws.onmessage = (evt) => {
-                try {
-                    const msg = JSON.parse(evt.data);
-                    const feeds = msg?.data?.feeds;
-                    if (!feeds) return;
-
-                    const updatedPrices = {};
-                    const updatedTrends = {};
-
-                    for (const [rawKey, feed] of Object.entries(feeds)) {
-                        const ltpc = feed?.fullFeed?.marketFF?.ltpc;
-                        if (!ltpc) continue;
-
-                        const ltp = Number(ltpc.ltp);
-                        const prevClose = Number(ltpc.cp);
-                        if (!isFinite(ltp) || !isFinite(prevClose)) continue;
-
-                        const change = +(ltp - prevClose).toFixed(2);
-                        const percent = +((change / prevClose) * 100).toFixed(2);
-                        const direction = change >= 0 ? "up" : "down";
-
-                        const key = rawKey.trim().toUpperCase();
-
-                        // 🔑 STORE PRICES BY INSTRUMENT_KEY ONLY
-                        updatedPrices[key] = {
-                            ltp,
-                            change,
-                            percent,
-                            direction,
-                            ts: Date.now()
-                        };
-
-
-                        // OPTIONAL: trend by symbol (UI arrows)
-                        const inst = instrumentByKey[key];
-                        if (inst?.symbol) {
-                            updatedTrends[inst.symbol.toUpperCase()] = direction;
-                        }
-                    }
-
-                    if (Object.keys(updatedPrices).length > 0) {
-                        setPrices((prev) => {
-                            const merged = { ...prev, ...updatedPrices };
-
-                            // 🔐 Persist prices so refresh / reconnect does not clear UI
-                            localStorage.setItem("lastPrices", JSON.stringify(merged));
-
-                            return merged;
-                        });
-
-                        setLastPrices((prev) => ({ ...prev, ...updatedPrices }));
-                    }
-
-
-                    if (Object.keys(updatedTrends).length > 0) {
-                        setPriceChange((prev) => ({ ...prev, ...updatedTrends }));
-                    }
-                } catch (err) {
-                    console.error("Tick parse error:", err);
-                }
-            };
-
-            ws.onclose = () => {
-                console.warn("🔴 WS closed");
-                setIsConnected(false);
-                if (!closed) {
-                    setTimeout(connect, 2000);
-                }
-            };
-
-            ws.onerror = () => {
-                console.error("⚠ WS error");
-                ws.close();
-            };
-        };
-
-        connect();
-
-        return () => {
-            closed = true;
-            wsRef.current?.close();
-        };
-    }, []); // ✅ DO NOT ADD DEPENDENCIES
-
-
     const toggleWatchlist = (inst) => {
         const sym = (inst.symbol || "").toUpperCase().trim();
         const exists = watchlist.find((w) => w.symbol === sym);
@@ -445,68 +274,40 @@ export default function Dashboard() {
     };
 
     const applyIndicators = async () => {
+
         if (!selectedSymbol || !timeframe) {
             return setToast("Select a symbol and timeframe first.");
         }
 
         setIsApplyingIndicators(true);
 
-        const normalizeTF = (tf) => {
-            const t = tf.toString().toLowerCase();
-            const map = {
-                "1": "1m",
-                "1m": "1m",
-                "3": "3m",
-                "3m": "3m",
-                "5": "5m",
-                "5m": "5m",
-                "15": "15m",
-                "15m": "15m",
-                "30": "30m",
-                "30m": "30m",
-                "60": "60m",
-                "60m": "60m",
-                "1d": "1d",
-                day: "1d",
-                daily: "1d",
-                "1440": "1d",
-            };
-            return map[t] || t;
-        };
-
-        const finalTF = normalizeTF(timeframe);
-        const isDaily = finalTF === "1d";
-
-        const url = isDaily
-            ? `/api/indicators/daily?symbol=${selectedSymbol}&store=true`
-            : `/api/indicators/intraday?symbol=${selectedSymbol}&timeframe=${finalTF}&store=true`;
-
         try {
+
             setToast("Generating indicators...");
 
-            const res = await fetch(url);
-            const data = await res.json();
-
-            if (!res.ok || data.error) {
-                return setToast(
-                    data.error || "Indicator processing failed"
-                );
-            }
+            const data = await generateIndicators(selectedSymbol, timeframe);
 
             setToast(
-                `Saved ${data.count || data.rows || 0} rows for ${selectedSymbol} (${finalTF})`
+                `Saved ${data.count || data.rows || 0} rows for ${selectedSymbol}`
             );
+
         } catch (err) {
+
             console.error(err);
-            setToast("Error applying indicators");
+            setToast(err.message || "Error applying indicators");
+
         } finally {
+
             setIsApplyingIndicators(false);
+
         }
+
     };
 
 
 
     const fetchHistoricalCandles = async () => {
+
         if (!selectedSymbol || !timeframe || !histStart || !histEnd) {
             return setToast("Select symbol, timeframe and date range.");
         }
@@ -515,182 +316,136 @@ export default function Dashboard() {
             return setToast("Select from search list before fetching data.");
         }
 
-        const sym = selectedSymbol.trim().toUpperCase();
-        const key = selectedInstrument.instrument_key;
-        const s = formatYMD(histStart);
-        const e = formatYMD(histEnd);
-
-        // Today in YYYY-MM-DD
-        const todayStr = format(new Date(), "yyyy-MM-dd");
-        const isTodayRange = (s === todayStr && e === todayStr);
-
         setIsFetchingHistory(true);
 
         try {
-            let endpoint = "";
-            let payload = {
-                symbol: sym,
-                instrument_key: key,
-                start_date: s,
-                end_date: e,
-            };
 
-            // DAILY mode → history-daily
-            if (["1D", "1DAY", "DAY", "1440"].includes(timeframe)) {
-                endpoint = "/api/candles/daily";
-            }
-            // TODAY → use /api/candles/store (intraday live fetch)
-            else if (isTodayRange) {
-                endpoint = "/api/candles/store";
-                payload.timeframe = timeframe;
-            }
-            // PAST DATES → use /api/candles/history
-            else {
-                endpoint = "/api/candles/history";
-                payload.timeframe = timeframe;
-            }
-
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+            const result = await fetchHistoricalCandlesAPI({
+                symbol: selectedSymbol,
+                instrument_key: selectedInstrument.instrument_key,
+                timeframe,
+                histStart,
+                histEnd
             });
 
-            const result = await res.json();
+            setToast(`Stored ${result.inserted} candles`);
 
-            if (!res.ok) {
-                return setToast(result.error || "API error");
-            }
-
-            setToast(
-                `Stored ${result.inserted} ${["1D", "DAY", "1DAY"].includes(timeframe)
-                    ? "daily"
-                    : timeframe
-                } candles for ${sym}`
-            );
         } catch (err) {
+
             console.error(err);
-            setToast("Fetch error.");
+            setToast(err.message);
+
         } finally {
+
             setIsFetchingHistory(false);
+
         }
     };
 
     const runBulkFetch = async () => {
+
         if (!selectedInstrument) return setToast("Select stock first.");
         if (!years) return setToast("Select a year range.");
 
         const sym = selectedSymbol.toUpperCase();
         const key = selectedInstrument.instrument_key;
+
         const months = years * 12;
 
-        const ranges = [];
         let today = new Date();
         let year = today.getFullYear();
         let month = today.getMonth();
 
-        for (let i = 0; i < months; i++) {
-            const start = new Date(year, month, 1);
-            const end = new Date(year, month + 1, 0);
-
-            ranges.push({
-                start: formatYMD(start),
-                end: formatYMD(end),
-            });
-
-            month--;
-            if (month < 0) {
-                month = 11;
-                year--;
-            }
-        }
-
         setToast(`Fetching ${years} year(s)...`);
         setIsFetchingHistory(true);
 
-        for (const r of ranges) {
-            const payload = {
-                symbol: sym,
-                instrument_key: key,
-                start_date: r.start,
-                end_date: r.end,
-            };
+        try {
 
-            let endpoint = "";
+            for (let i = 0; i < months; i++) {
 
-            if (["1440", "1D", "1d", "DAY", "day"].includes(timeframe)) {
-                endpoint = "/api/candles/daily";
-            } else {
-                endpoint = "/api/candles/history";
-                payload.timeframe = timeframe;
+                const start = new Date(year, month, 1);
+                const end = new Date(year, month + 1, 0);
+
+                await fetchHistoricalCandlesAPI({
+                    symbol: sym,
+                    instrument_key: key,
+                    timeframe,
+                    histStart: start,
+                    histEnd: end
+                });
+
+                setToast(`Stored ${formatYMD(start)} → ${formatYMD(end)}`);
+
+                month--;
+
+                if (month < 0) {
+                    month = 11;
+                    year--;
+                }
+
+                await new Promise(r => setTimeout(r, 300));
+
             }
 
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
+            setToast(`Done fetching ${years} year(s).`);
 
-            const result = await res.json();
+        } catch (err) {
 
-            if (!res.ok) {
-                setToast(`Error (${r.start}→${r.end}): ${result.error}`);
-                break;
-            }
+            console.error(err);
+            setToast(err.message);
 
-            setToast(`Stored ${r.start} → ${r.end}`);
-            await new Promise((r) => setTimeout(r, 300));
+        } finally {
+
+            setIsFetchingHistory(false);
+
         }
-
-        setIsFetchingHistory(false);
-        setToast(`Done fetching ${years} year(s).`);
     };
 
-
-
     const downloadExcel = async () => {
+
         if (!selectedSymbol || !startDate || !endDate) {
             return setToast("Select symbol, start date, and end date.");
         }
+
         if (!selectedInstrument) {
             return setToast("Select the stock from search list first.");
         }
 
         const key = selectedInstrument.instrument_key;
+
         if (!key) {
             return setToast("No instrument_key found. Please refresh instruments.");
         }
 
         const sym = selectedSymbol.trim().toUpperCase();
-        const s = normalizeDate(startDate);
-        const e = normalizeDate(endDate);
-
-        const url = `/api/history/daily?instrument_key=${encodeURIComponent(
-            key
-        )}&symbol=${encodeURIComponent(sym)}&start=${s}&end=${e}&_=${Date.now()}`;
 
         try {
-            const res = await fetch(url);
-            const type = res.headers.get("content-type") || "";
 
-            if (type.includes("application/json")) {
-                const err = await res.json().catch(() => ({}));
-                return setToast(err.error || "Server error");
-            }
+            const blob = await downloadExcelAPI({
+                instrument_key: key,
+                symbol: sym,
+                startDate,
+                endDate
+            });
 
-            const blob = await res.blob();
-            const fileURL = window.URL.createObjectURL(blob);
+            const url = window.URL.createObjectURL(blob);
+
             const a = document.createElement("a");
-            a.href = fileURL;
-            a.download = `${sym}_${s}_to_${e}_Daily.xlsx`;
+            a.href = url;
+            a.download = `${sym}_data.xlsx`;
             document.body.appendChild(a);
             a.click();
             a.remove();
+
             setToast("Excel downloaded.");
-        } catch {
-            setToast("Failed to download.");
+
+        } catch (err) {
+
+            setToast(err.message || "Failed to download.");
+
         }
     };
+
 
     if (isLoading) {
         return (
@@ -707,7 +462,7 @@ export default function Dashboard() {
     }
 
     const selectedLtp = selectedInstrument
-        ? getLtpForInstrument(selectedInstrument)
+        ? getLtpForInstrument(selectedInstrument, prices)
         : "--";
 
     // ------------------- UI -------------------
@@ -735,7 +490,6 @@ export default function Dashboard() {
                     <SearchBar
                         search={search}
                         setSearch={setSearch}
-                        setDebouncedSearch={setDebouncedSearch}
                         showResults={showResults}
                         setShowResults={setShowResults}
                         debouncedSearch={debouncedSearch}
@@ -755,8 +509,6 @@ export default function Dashboard() {
 
                         <WebSocketStatus
                             isConnected={isConnected}
-                            connectWebSocket={connectWebSocket}
-                            disconnectWebSocket={disconnectWebSocket}
                         />
 
                         <MarketSummary
