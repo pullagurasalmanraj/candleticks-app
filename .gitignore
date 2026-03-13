@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment files
+
+
+# OS files
+$RECYCLE.BIN/
+Thumbs.db
+.DS_Store
