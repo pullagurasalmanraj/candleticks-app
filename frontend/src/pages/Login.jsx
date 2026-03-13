@@ -1,15 +1,55 @@
 import React, { useState } from "react";
-import { LogIn, UserPlus } from "lucide-react";
 import CandleBackground from "../components/CandleBackground";
 import Navbar from "../components/Navbar";
+
+import {
+    Card,
+    CardContent,
+    TextField,
+    Button,
+    Tabs,
+    Tab,
+    Typography,
+    Box,
+    Divider,
+    Dialog,
+    DialogContent,
+    DialogActions
+} from "@mui/material";
+
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import GoogleIcon from "@mui/icons-material/Google";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import LoginIcon from "@mui/icons-material/Login";
 
 export default function AuthPage() {
 
     const [tab, setTab] = useState("login");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [signupSuccess, setSignupSuccess] = useState(false);
+
+
+
+    const validateInputs = () => {
+
+        if (!username || !password) {
+            alert("Username and password are required");
+            return false;
+        }
+
+        if (password.length < 6) {
+            alert("Password must be at least 6 characters");
+            return false;
+        }
+
+        return true;
+    };
 
     const handleLogin = async () => {
+
+        if (!validateInputs()) return;
+
         const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -22,11 +62,17 @@ export default function AuthPage() {
             alert(data.error);
             return;
         }
+        // store user login state
+        localStorage.setItem("user", username);
 
-        window.location.href = "/trading-login";
+        window.location.href = "/brokers";
     };
 
+
     const handleSignup = async () => {
+
+        if (!validateInputs()) return;
+
         const res = await fetch("/api/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -40,30 +86,27 @@ export default function AuthPage() {
             return;
         }
 
-        alert("Account created successfully");
-        setTab("login");
+        setSignupSuccess(true);
     };
-
     const loginGoogle = () => {
         window.location.href = "/auth/google";
     };
 
+
     return (
 
-
-        <div className="relative w-full min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700">
+        <div
+            className="relative w-full min-h-screen"
+            style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        >
 
             <CandleBackground />
-
 
             <Navbar />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-64px)]">
 
-
-
-
-                {/* LEFT HERO SECTION */}
+                {/* HERO */}
 
                 <div className="relative z-10 flex flex-col justify-center px-16 text-white">
 
@@ -71,126 +114,200 @@ export default function AuthPage() {
                         Candlesticks
                     </h1>
 
-                    <p className="mt-6 text-lg text-indigo-100 max-w-md">
-                        Professional trading analytics platform powered by
-                        real-time market data, algorithmic indicators,
-                        and AI driven insights.
+                    <p className="mt-6 text-lg max-w-md" style={{ color: "var(--text-secondary)" }}>
+                        Professional trading analytics platform powered by real-time
+                        market data, algorithmic indicators and AI driven insights.
                     </p>
 
-                    <div className="mt-10 space-y-4 text-indigo-100">
-
+                    <div className="mt-10 space-y-4" style={{ color: "var(--text-secondary)" }}>
                         <p>📊 Real-time market ticks</p>
                         <p>📈 Advanced indicator engine</p>
                         <p>⚡ Strategy backtesting</p>
                         <p>🤖 AI powered predictions</p>
-
                     </div>
 
                 </div>
 
-                {/* RIGHT LOGIN PANEL */}
+
+                {/* LOGIN CARD */}
 
                 <div className="relative z-10 flex items-center justify-center px-6">
 
-                    <div className="w-full max-w-md bg-indigo-500/20 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-8">
+                    <Card
+                        sx={{
+                            width: 420,
+                            background: "var(--bg-secondary)",
+                            border: "1px solid var(--border-color)",
+                            backdropFilter: "blur(25px)",
+                            borderRadius: 4,
+                            color: "var(--text-primary)"
+                        }}
+                    >
 
-                        <h2 className="text-2xl font-bold text-center text-white">
-                        </h2>
+                        <CardContent>
 
-                        {/* Tabs */}
+                            <Typography variant="h5" align="center" sx={{ mb: 2 }}>
+                                Welcome
+                            </Typography>
 
-                        <div className="flex bg-indigo-500/20 rounded-lg p-1 mt-6">
-                            <button
-                                onClick={() => setTab("login")}
-                                className={`flex-1 py-2 text-sm font-medium rounded-md transition ${tab === "login"
-                                    ? "bg-white shadow text-indigo-700"
-                                    : "text-indigo-200 hover:text-white"
-                                    }`}
+
+                            <Tabs
+                                value={tab}
+                                onChange={(e, v) => setTab(v)}
+                                centered
+                                textColor="inherit"
+                                indicatorColor="secondary"
                             >
-                                Login
-                            </button>
 
-                            <button
-                                onClick={() => setTab("signup")}
-                                className={`flex-1 py-2 text-sm font-medium rounded-md transition ${tab === "signup"
-                                    ? "bg-white shadow text-indigo-700"
-                                    : "text-indigo-200 hover:text-white"
-                                    }`}
-                            >
-                                Signup
-                            </button>
+                                <Tab label="Login" value="login" />
+                                <Tab label="Signup" value="signup" />
+
+                            </Tabs>
 
 
-                        </div>
+                            <Box mt={3} display="flex" flexDirection="column" gap={2}>
 
-                        {/* FORM */}
+                                <TextField
+                                    label="Username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    fullWidth
+                                    variant="outlined"
+                                    InputProps={{
+                                        sx: {
+                                            color: "var(--text-primary)"
+                                        }
+                                    }}
 
-                        <div className="mt-6 space-y-4">
-
-                            <input
-                                type="text"
-                                placeholder="Username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-indigo-500/20 border border-white/30 text-white placeholder-indigo-200 rounded-lg px-4 py-2 outline-none transition-all duration-200 hover:bg-indigo-500/30 focus:bg-indigo-500/30 focus:ring-2 focus:ring-white/40"
-                            />
-
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-indigo-500/20 border border-white/30 text-white placeholder-indigo-200 rounded-lg px-4 py-2 outline-none transition-all duration-200 hover:bg-indigo-500/30 focus:bg-indigo-500/30 focus:ring-2 focus:ring-white/40"
-                            />
-
-                            {tab === "login" && (
-                                <button
-                                    onClick={handleLogin}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
-                                >
-                                    <LogIn size={18} />
-                                    Login
-                                </button>
-                            )}
-
-                            {tab === "signup" && (
-                                <button
-                                    onClick={handleSignup}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
-                                >
-                                    <UserPlus size={18} />
-                                    Create Account
-                                </button>
-                            )}
-
-                            {/* Divider */}
-
-                            <div className="flex items-center gap-3 my-4">
-                                <div className="flex-1 h-px bg-gray-200"></div>
-                                <span className="text-xs text-gray-400">OR</span>
-                                <div className="flex-1 h-px bg-gray-200"></div>
-                            </div>
-
-                            {/* Google */}
-
-                            <button
-                                onClick={loginGoogle}
-                                className="w-full border border-white/30 hover:bg-indigo-500/30 py-2 rounded-lg flex items-center justify-center gap-3 text-white transition"
-                            >
-                                <img
-                                    src="https://www.svgrepo.com/show/475656/google-color.svg"
-                                    className="w-5 h-5"
+                                    InputLabelProps={{
+                                        sx: {
+                                            color: "var(--text-secondary)"
+                                        }
+                                    }}
                                 />
-                                Continue with Google
-                            </button>
 
-                        </div>
+                                <TextField
+                                    label="Password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    fullWidth
+                                    variant="outlined"
+                                    InputProps={{
+                                        sx: {
+                                            color: "var(--text-primary)"
+                                        }
+                                    }}
 
-                    </div>
+                                    InputLabelProps={{
+                                        sx: {
+                                            color: "var(--text-secondary)"
+                                        }
+                                    }}
+                                />
+
+
+                                {tab === "login" && (
+
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<LoginIcon />}
+                                        onClick={handleLogin}
+                                        disabled={!username || !password}
+                                        fullWidth
+                                        sx={{ height: 45 }}
+                                    >
+                                        Login to Trading Platform
+                                    </Button>
+                                )}
+
+
+                                {tab === "signup" && (
+
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<PersonAddIcon />}
+                                        onClick={handleSignup}
+                                        disabled={!username || !password}
+                                        fullWidth
+                                        sx={{ height: 45 }}
+                                    >
+                                        Create Trading Account
+                                    </Button>
+
+                                )}
+
+
+                                <Divider sx={{ borderColor: "var(--border-color)" }}>
+                                    OR
+                                </Divider>
+
+
+                                <Button
+                                    startIcon={<GoogleIcon />}
+                                    onClick={loginGoogle}
+                                    sx={{
+                                        height: 45,
+                                        color: "var(--text-primary)",
+                                        borderColor: "var(--border-color)",
+                                        "&:hover": {
+                                            borderColor: "var(--accent-up)"
+                                        }
+                                    }}
+                                >
+                                    Continue with Google
+                                </Button>
+
+                            </Box>
+
+                        </CardContent>
+
+                    </Card>
 
                 </div>
 
             </div>
+
+
+            {/* SUCCESS DIALOG */}
+
+            <Dialog open={signupSuccess}>
+
+                <DialogContent sx={{ textAlign: "center", p: 5 }}>
+
+                    <CheckCircleIcon
+                        sx={{ fontSize: 60, color: "var(--accent-up)" }}
+                    />
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                        Account Created
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                        Your trading account has been created successfully.
+                        Please login to continue.
+                    </Typography>
+
+                </DialogContent>
+
+
+                <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
+
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            setSignupSuccess(false);
+                            setTab("login");
+                        }}
+                    >
+                        Go to Trading Dashboard
+                    </Button>
+
+                </DialogActions>
+
+            </Dialog>
+
         </div>
+
     );
+
 }

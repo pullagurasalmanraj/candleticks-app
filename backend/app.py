@@ -145,6 +145,16 @@ safe_requests.trust_env = False
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 
+# 🔑 Flask session secret key (required for login sessions)
+app.secret_key = os.getenv("SECRET_KEY", "candlesticks_super_secret_key")
+app.config.update(
+    SECRET_KEY=os.getenv("SECRET_KEY", "candlesticks_super_secret_key"),
+    SESSION_COOKIE_NAME="candlesticks_session",
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,  # True only if HTTPS
+)
+
 # Redis setup
 REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/10")
 REDIS_ENABLED = False
@@ -530,6 +540,7 @@ def login_user():
     cur.execute("SELECT password_hash FROM users WHERE username=%s", (username,))
 
     row = cur.fetchone()
+    cur.close()
 
     if not row:
         return jsonify({"error": "Invalid username"}), 401
@@ -542,6 +553,17 @@ def login_user():
     return jsonify({"success": True})
 
 
+from flask import Flask, request, jsonify, session, redirect
+from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
+
+import psycopg2
+
+conn = psycopg2.connect(
+    host=PG_HOST, port=PG_PORT, database=PG_DB, user=PG_USER, password=PG_PASSWORD
+)
+
+
 @app.route("/api/signup", methods=["POST"])
 def signup():
 
@@ -549,24 +571,85 @@ def signup():
     username = data["username"]
     password = generate_password_hash(data["password"])
 
-    cur.execute(
-        "INSERT INTO users(username,password_hash) VALUES(%s,%s)", (username, password)
-    )
+    cur = conn.cursor()  # ← create cursor here
 
-    conn.commit()
+    try:
+        cur.execute(
+            "INSERT INTO users(username,password_hash) VALUES(%s,%s)",
+            (username, password),
+        )
 
-    return {"success": True}
+        conn.commit()
+
+        return {"success": True}
+
+    except Exception as e:
+        conn.rollback()
+        return {"error": "Username already exists"}
+
+    finally:
+        cur.close()  # ← always close cursor
 
 
-# OAuth endpoints (minimal)
-from flask import session, redirect, jsonify
+from authlib.integrations.flask_client import OAuth
+from flask import Flask, request, jsonify, session, redirect, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
+import os
+
+
+app.secret_key = os.getenv("SECRET_KEY", "candlesticks_super_secret_key")
+
+# Fix reverse proxy headers from Nginx
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+oauth = OAuth(app)
+
+google = oauth.register(
+    name="google",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
+
+
+@app.route("/auth/google")
+def google_login():
+    print("SESSION BEFORE:", dict(session))
+
+    redirect_uri = url_for("google_callback", _external=True)
+
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route("/auth/google/callback")
+def google_callback():
+
+    token = google.authorize_access_token()
+
+    # user info already inside id_token
+    user_info = token["userinfo"]
+
+    email = user_info["email"]
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT username FROM users WHERE username=%s", (email,))
+    user = cur.fetchone()
+
+    if not user:
+        cur.execute(
+            "INSERT INTO users(username,password_hash) VALUES(%s,%s)", (email, "")
+        )
+        conn.commit()
+
+    session["user"] = email
+
+    return redirect("/brokers")
 
 
 @app.route("/auth/login")
 def auth_login():
-
-    if "user" not in session:
-        return jsonify({"error": "Unauthorized"}), 401
 
     auth_url = (
         f"{UPSTOX_API_BASE}/login/authorization/dialog"

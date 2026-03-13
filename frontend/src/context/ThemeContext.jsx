@@ -16,9 +16,9 @@ const BLOOMBERG_LIGHT = {
 
 // --------------------- BLOOMBERG DARK PALETTE ----------------------
 const BLOOMBERG_DARK = {
-    "--bg-primary": "#0b0f19",
+    "--bg-primary": "#dd8717",
     "--bg-secondary": "#161b22",
-    "--bg-tertiary": "#1d2330",
+    "--bg-tertiary": "#804b07",
     "--border-color": "#2b3241",
     "--text-primary": "#e5e5e5",
     "--text-secondary": "#b3b3b3",

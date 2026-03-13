@@ -39,7 +39,9 @@ import TransformerPredictor from "./pages/TransformerPredictor";
 import Login from "./pages/Login";
 import LoginSuccess from "./pages/LoginSuccess";
 import OptionsTrading from "./pages/OptionsTrading";
+import BrokersPage from "./pages/BrokersPage";
 import { Activity } from "lucide-react";
+
 
 
 // Simple loader for lazy areas
@@ -52,15 +54,26 @@ function SkeletonLoader() {
     );
 }
 
-// ------------------- Protected Route -------------------
+
 function ProtectedRoute({ children }) {
+
+    const user = localStorage.getItem("user");
+
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    return children;
+}
+
+// ------------------- Protected Route -------------------
+function BrokerProtectedRoute({ children }) {
+
     const token = localStorage.getItem("upstox_access_token");
     const expiry = Number(localStorage.getItem("upstox_token_expiry") || 0);
 
     if (!token || Date.now() > expiry) {
-        localStorage.removeItem("upstox_access_token");
-        localStorage.removeItem("upstox_token_expiry");
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/brokers" replace />;
     }
 
     return children;
@@ -325,21 +338,16 @@ function AppShell() {
                         <main className="flex-1 overflow-y-auto">
                             <Suspense fallback={<SkeletonLoader />}>
                                 <Routes>
-                                    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                                    <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
-                                    <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
-                                    <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                                    <Route path="/lstm" element={<ProtectedRoute><LstmPredictor /></ProtectedRoute>} />
-                                    <Route path="/transformer" element={<ProtectedRoute><TransformerPredictor /></ProtectedRoute>} />
-                                    <Route
-                                        path="/options"
-                                        element={
-                                            <ProtectedRoute>
-                                                <OptionsTrading />
-                                            </ProtectedRoute>
-                                        }
-                                    />
-
+                                    <Route path="/" element={<ProtectedRoute><BrokerProtectedRoute><Dashboard /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/login" element={<ProtectedRoute><BrokerProtectedRoute><Login /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/login-success" element={<ProtectedRoute><BrokerProtectedRoute><LoginSuccess /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/watchlist" element={<ProtectedRoute><BrokerProtectedRoute><Watchlist /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/portfolio" element={<ProtectedRoute><BrokerProtectedRoute><Portfolio /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/settings" element={<ProtectedRoute><BrokerProtectedRoute><SettingsPage /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/lstm" element={<ProtectedRoute><BrokerProtectedRoute><LstmPredictor /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/transformer" element={<ProtectedRoute><BrokerProtectedRoute><TransformerPredictor /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/options" element={<ProtectedRoute><BrokerProtectedRoute><OptionsTrading /></BrokerProtectedRoute></ProtectedRoute>} />
+                                    <Route path="/brokers" element={<ProtectedRoute><BrokersPage /></ProtectedRoute>} />
                                     <Route path="*" element={<Navigate to="/" replace />} />
                                 </Routes>
                             </Suspense>
